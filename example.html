@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <title>Incident Review</title>
+    <meta charset="utf-8">
+</head>
+<body>
+<section>
+    <h1>Incident Review</h1>
+    <a href="https://example.com/incident-report.html">The real incident that we're reviewing</a>
+    <form>
+        <label for="incident-description">Description:</label>
+        <textarea id="incident-description" name="description">The thing that we're talking about</textarea>
+    </form>
+</section>
+
+<section>
+    <h1>Root Causes</h1>
+
+    <form class="add">
+        <label>Type:
+            <select>
+                <option>- Select -</option>
+                <option>First</option>
+                <option>Second</option>
+            </select>
+        </label>
+        <label>
+            Description:
+            <textarea></textarea>
+        </label>
+
+        <button type="submit">Add root cause</button>
+    </form>
+
+    <ul class="root-causes">
+        <li>
+            <span class="type">Something</span>
+            <span type="why">The reason this root cause</span>
+            <form class="vote">
+                <button class="vote-up">👍 [<span class="count">0</span>]</button>
+                <button class="vote-down">👎 [<span class="count">0</span>]</button>
+            </form>
+
+            <section>
+            Why this root cause?
+            <ul>
+                <li>👍 reason 1 [1]</li>
+            </ul>
+
+            Why not this root cause?
+            <ul>
+                <li>👎 reason 2 [2]</li>
+            </ul>
+            </section>
+        </li>
+    </ul>
+</section>
+
+<section>
+    <h1>Triggers</h1>
+
+    <form class="add">
+        <label>Type:
+            <select>
+                <option>- Select -</option>
+                <option>First</option>
+                <option>Second</option>
+            </select>
+        </label>
+        <label>
+            Description:
+            <textarea></textarea>
+        </label>
+
+        <button type="submit">Add trigger</button>
+    </form>
+
+    <ul class="triggers">
+        <li>
+            <span class="type">Something</span>
+            <span type="why">The reason this root cause</span>
+            <form class="vote">
+                <button class="vote-up">👍 [<span class="count">0</span>]</button>
+                <button class="vote-down">👎 [<span class="count">0</span>]</button>
+            </form>
+
+            <section>
+                Why this trigger?
+                <ul>
+                    <li>👍 reason 1 [1]</li>
+                </ul>
+
+                Why not this trigger?
+                <ul>
+                    <li>👎 reason 2 [2]</li>
+                </ul>
+            </section>
+        </li>
+    </ul>
+</section>
+</body>
+</html>
