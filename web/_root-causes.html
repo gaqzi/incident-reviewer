@@ -1,0 +1,44 @@
+<h1>Root causes</h1>
+
+<form method="post" action="/report/{{ .Data.Incident.Code }}/root-causes" hx-target="#root-causes">
+    <label>Type:
+        <select name="type">
+            <option>- Select -</option>
+            <option value="first">First</option>
+            <option value="second">Second</option>
+        </select>
+    </label>
+    <label>
+        Description:
+        <textarea name="description"></textarea>
+    </label>
+
+    <button type="submit">Add root cause</button>
+</form>
+
+<ul class="root-causes">
+    {{ range .Data.Incident.RootCauses }}
+        <li>
+            <span class="type">{{ .Type }}</span>
+            <span type="why">{{ .Description }}</span>
+            <!--
+            <form class="vote">
+                <button class="vote-up">👍 [<span class="count">0</span>]</button>
+                <button class="vote-down">👎 [<span class="count">0</span>]</button>
+            </form>
+
+            <section>
+                Why this root cause?
+                <ul>
+                    <li>👍 reason 1 [1]</li>
+                </ul>
+
+                Why not this root cause?
+                <ul>
+                    <li>👎 reason 2 [2]</li>
+                </ul>
+            </section>
+            -->
+        </li>
+    {{ end }}
+</ul>

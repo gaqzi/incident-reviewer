@@ -1,0 +1,16 @@
+<div hx-ext="sse" sse-connect="/report/{{ .Data.Incident.Code }}/stream">
+    <section>
+        <h1>Incident Review</h1>
+        <a href="https://example.com/{{ .Data.Incident.Code }}">{{ .Data.Incident.Name }}</a>
+        <form method="post" action="/report/{{ .Data.Incident.Code }}">
+            <label for="incident-description">Description:</label>
+            <textarea id="incident-description" name="description">{{ .Data.Incident.Description }}</textarea>
+        </form>
+    </section>
+
+    {{ if .Partials.RootCauses }}
+        <section id="root-causes" hx-trigger="sse:root-causes" hx-get="/report/{{ .Data.Incident.Code }}/root-causes">
+            {{ .Partials.RootCauses }}
+        </section>
+    {{ end }}
+</div>

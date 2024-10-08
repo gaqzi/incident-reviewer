@@ -5,6 +5,8 @@ import (
 	"net/http"
 
 	"github.com/donseba/go-htmx"
+
+	"github.com/gaqzi/incident-reviewer/web"
 )
 
 type App struct {
@@ -13,13 +15,16 @@ type App struct {
 
 func main() {
 	// new app with htmx instance
-	app := &App{
-		htmx: htmx.New(),
-	}
+	// app := &App{
+	// 	htmx: htmx.New(),
+	// }
 
 	mux := http.NewServeMux()
-	// wrap the htmx example middleware around the http handler
-	mux.Handle("/", http.HandlerFunc(app.Home))
+	mux.Handle(
+		"GET /static/",
+		http.StripPrefix("/static/", http.FileServer(http.Dir("./public"))),
+	)
+	web.Register(mux)
 
 	err := http.ListenAndServe(":3000", mux)
 	log.Fatal(err)
