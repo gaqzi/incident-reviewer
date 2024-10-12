@@ -1,0 +1,3 @@
+#!/bin/bash
+
+exec air -c .air.toml
