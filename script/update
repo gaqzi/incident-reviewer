@@ -1,0 +1,7 @@
+#!/bin/bash
+
+## Clean out tmp since we keep a bunch of files there
+rm -rf tmp/
+
+## Bootstrap so all dependencies are fixed
+exec script/bootstrap

@@ -1,3 +1,4 @@
 #!/bin/bash
 
+## Start air, the go live reloader
 exec air -c .air.toml
