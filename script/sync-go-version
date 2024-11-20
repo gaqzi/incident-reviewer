@@ -1,0 +1,18 @@
+#!/bin/bash
+# A script to help update the go version used across all the files that need
+# it set consistently, relies on asdf to manage the go version.
+
+: ${VERSION:=$1}
+
+if [ -z "$VERSION" ]; then
+  GO_VERSION="latest"
+fi
+
+## Set to the specified version, latest if none specified on the cli
+asdf install golang "$GO_VERSION"
+asdf local golang "$GO_VERSION"
+GO_VERSION=$(cat .tool-versions | grep golang | cut -d' ' -f 2)
+
+## Update go.mod to require the specified version,
+## which we then rely on in the workflow for CI
+sed -I '' -E "s/^go (.*)$/go $GO_VERSION/" go.mod
