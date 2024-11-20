@@ -1,0 +1,7 @@
+#!/bin/bash
+BIN_DIR=$(realpath $(dirname $0))
+
+## Stop the local-dev-dependencies command and clear out tmp files, then run bootstrap
+go run cmd/local-dev-dependencies/main.go stop && \
+    rm -rf tmp && \
+    exec "$BIN_DIR/bootstrap"
