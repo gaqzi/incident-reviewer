@@ -9,6 +9,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"io/fs"
 	"log"
 	"net"
 	"net/http"
@@ -149,6 +150,12 @@ func main() {
 func stop(cntxt *daemon.Context) {
 	proc, err := cntxt.Search()
 	if err != nil {
+		var patherr *fs.PathError
+		// can't open the pid file, so let's assume the process isn't running and exit successfully.
+		if errors.As(err, &patherr) && patherr.Err.Error() == "no such file or directory" {
+			os.Exit(0)
+		}
+
 		log.Fatalf("failed to find process: %s", err.Error())
 	}
 	// process isn't alive, so don't try anything more
