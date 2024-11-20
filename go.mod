@@ -9,7 +9,7 @@ require (
 	github.com/sevlyar/go-daemon v0.1.6
 	github.com/stretchr/testify v1.9.0
 	github.com/testcontainers/testcontainers-go v0.34.0
-	github.com/testcontainers/testcontainers-go/modules/postgres v0.33.0
+	github.com/testcontainers/testcontainers-go/modules/postgres v0.34.0
 )
 
 require (
