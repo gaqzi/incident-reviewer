@@ -3,7 +3,7 @@ module github.com/gaqzi/incident-reviewer
 go 1.23.3
 
 require (
-	github.com/donseba/go-htmx v1.10.0
+	github.com/donseba/go-htmx v1.11.3
 	github.com/go-sqlx/sqlx v1.3.8
 	github.com/lib/pq v1.10.9
 	github.com/sevlyar/go-daemon v0.1.6
