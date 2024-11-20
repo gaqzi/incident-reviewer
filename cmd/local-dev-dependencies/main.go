@@ -164,7 +164,7 @@ func stop(cntxt *daemon.Context) {
 	for {
 		isAlive, err := cntxt.Search()
 		if err != nil {
-			log.Fatal("error: %q", err)
+			log.Fatalf("error: %q", err)
 		}
 		// no process found so let's assume it's ded now
 		if isAlive == nil {
