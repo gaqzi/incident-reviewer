@@ -1,0 +1,4 @@
+#!/bin/bash
+BIN_DIR=$(realpath $(dirname $0))
+
+exec "$BIN_DIR/test"
