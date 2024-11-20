@@ -51,3 +51,7 @@ installAsdf &&
 ## Install all code dependencies
 echo "Install code dependencies"
 go mod download -x
+
+## Install goose to manage database migrations
+go get github.com/pressly/goose/v3/cmd/goose && \
+  go install -tags='no_clickhouse no_libsql no_mssql no_mysql no_vertica no_xflag no_ydb' github.com/pressly/goose/v3/cmd/goose
