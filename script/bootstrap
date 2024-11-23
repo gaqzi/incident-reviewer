@@ -53,8 +53,16 @@ echo "Install code dependencies"
 go mod download -x
 
 ## Install goose to manage database migrations
-go get github.com/pressly/goose/v3/cmd/goose && \
-  go install -tags='no_clickhouse no_libsql no_mssql no_mysql no_vertica no_xflag no_ydb' github.com/pressly/goose/v3/cmd/goose
+# I'm specifying the version so the dependencies for the cli don't get put into the go.mod file,
+# which causes some incompatibilities that need to get manually sorted.
+GOOSE_VERSION=$(awk '/pressly\/goose\/v3/ {print $2}' go.mod)
+go install -tags='no_clickhouse no_libsql no_mssql no_mysql no_vertica no_xflag no_ydb' "github.com/pressly/goose/v3/cmd/goose@$GOOSE_VERSION"
 
 ## Install playwright dependencies
 go run ./cmd/local-dev-dependencies/ playwright
+
+## Always finish with go mod tidy
+# In case we get something nasty when installing everything it'll try and sort it out,
+# and because I was getting incompatible dependencies when installing the cli tools before,
+# it'll be a warning if the go.mod gets broken.
+go mod tidy
