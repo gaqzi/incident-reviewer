@@ -18,6 +18,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/playwright-community/playwright-go"
 	"github.com/sevlyar/go-daemon"
 
 	"github.com/gaqzi/incident-reviewer/test"
@@ -66,11 +67,17 @@ func main() {
 	}
 
 	if len(os.Args) > 1 {
-		if os.Args[1] != "stop" {
+		switch os.Args[1] {
+		case "stop":
+			stop(cntxt)
+		case "playwright":
+			if err := playwright.Install(); err != nil {
+				log.Fatalf("failed to install playwright dependencies: %s", err.Error())
+			}
+			os.Exit(0)
+		default:
 			log.Fatalf("unknown subcommand: %q", os.Args[1])
 		}
-
-		stop(cntxt)
 	}
 
 	ln, err := net.Listen("tcp", "localhost:0")
