@@ -1,0 +1,14 @@
+<section>
+    <h1>New review</h1>
+</section>
+
+
+{{ if .Partials.Reviews }}
+<section>
+    <h1>Existing reviews</h1>
+
+    {{ range .Data.Reviews }}
+    <li><a href="/reviews/{{ .ID }}">{{ .Title }}</a></li>
+    {{ end }}
+</section>
+{{ end }}
