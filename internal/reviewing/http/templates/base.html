@@ -11,6 +11,13 @@
         }
     </style>
     <script src="/assets/htmx-2.0.2.min.js"></script>
+    <!--
+    The below configuration lets all responses for HTMX to swap out the content,
+    intended as a quick fix for "unknown errors" to at least display something.
+
+    For how it works see: https://htmx.org/docs/#response-handling
+    -->
+    <meta name="htmx-config" content='{"responseHandling": [{"code":".*", "swap": true}]}'>
 </head>
 <body hx-boost="true">
     {{ .Partials.Body }}

@@ -1,14 +1,24 @@
-<section>
-    <h1>New review</h1>
-</section>
+{{ if .Partials.New }}
+    <section class="new">
+        <h1>Create new review</h1>
+
+        {{ if .Data.New }}
+            <p class="notice success">Successfully created review <a href="/reviews/{{ .Data.New.Created.ID }}">{{ .Data.New.Created.Title }}</a>!</p>
+        {{ end }}
+
+        {{ .Partials.New }}
+    </section>
+{{ end }}
 
 
 {{ if .Partials.Reviews }}
-<section>
-    <h1>Existing reviews</h1>
+    <section class="listing">
+        <h1>Existing reviews</h1>
 
-    {{ range .Data.Reviews }}
-    <li><a href="/reviews/{{ .ID }}">{{ .Title }}</a></li>
-    {{ end }}
-</section>
+        <ul>
+            {{ range .Data.Reviews }}
+                <li><a href="/reviews/{{ .ID }}">{{ .Title }}</a></li>
+            {{ end }}
+        </ul>
+    </section>
 {{ end }}
