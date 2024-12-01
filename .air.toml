@@ -4,16 +4,16 @@ tmp_dir = "tmp"
 
 [build]
   args_bin = []
-  bin = "./tmp/main"
+  bin = "./tmp/incident-reviewer"
   pre_cmd = [
     "go run cmd/local-dev-dependencies/main.go"
   ]
-  cmd = "go build -o ./tmp/main ."
+  cmd = "go build -o ./tmp/incident-reviewer ./cmd/incident-reviewer/"
   post_cmd = [
     "go run cmd/local-dev-dependencies/main.go stop"
   ]
   delay = 1000
-  exclude_dir = ["assets", "docs", "script", "testdata", "tmp", "vendor"]
+  exclude_dir = ["docs", "script", "tmp"]
   exclude_file = []
   exclude_regex = ["_test.go"]
   exclude_unchanged = false

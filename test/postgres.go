@@ -4,10 +4,11 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"path/filepath"
+	"os"
 	"time"
 
 	"github.com/go-sqlx/sqlx"
+	_ "github.com/lib/pq"
 	"github.com/pressly/goose/v3"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
@@ -15,15 +16,9 @@ import (
 )
 
 func StartPostgres(ctx context.Context) (err error, conn string, done func()) {
-	migrationFiles, err := filepath.Glob("../migrations/*.sql")
-	if err != nil {
-		return fmt.Errorf("failed to list database migrations: %w", err), "", func() {}
-	}
-
 	postgresContainer, err := postgres.Run(ctx,
 		"docker.io/postgres:16-alpine",
 		postgres.WithDatabase("incident_reviewer"),
-		postgres.WithInitScripts(migrationFiles...),
 		testcontainers.WithWaitStrategy(
 			wait.ForLog("database system is ready to accept connections").
 				WithOccurrence(2).
@@ -76,7 +71,15 @@ func migrate(conn string) error {
 	// Don't output stuff when it's working as expected
 	goose.SetLogger(&gooseErrorLogger{})
 
-	if err := goose.Up(db.DB, "../migrations"); err != nil {
+	// When _GO_DAEMON is set we're running in local-dev-dependencies,
+	// and it's from the root of the repo. Else, it's from the tests, and
+	// it's relative from this file's path and need to be made relative.
+	migrationPath := "migrations/"
+	if _, ok := os.LookupEnv("_GO_DAEMON"); !ok {
+		migrationPath = "../" + migrationPath
+	}
+
+	if err := goose.Up(db.DB, migrationPath); err != nil {
 		return fmt.Errorf("failed to migrate using goose: %w", err)
 	}
 
