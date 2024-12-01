@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/stretchr/testify/require"
@@ -39,6 +40,8 @@ func StorageTest(t *testing.T, ctx context.Context, storeFactory func() reviewin
 
 			require.NoError(t, err, "expected to have saved successfully when all fiels are set correctly")
 			require.NotEmpty(t, actual.ID, "expected the ID to be set to something when saved, is there an error that wasn't covered?")
+			require.NotEmpty(t, actual.CreatedAt, "expected to have set CreatedAt when creating if it was empty")
+			require.NotEmpty(t, actual.UpdatedAt, "expected to have set UpdatedAt when saving")
 			require.Equal(
 				t,
 				reviewing.Review{
@@ -47,6 +50,8 @@ func StorageTest(t *testing.T, ctx context.Context, storeFactory func() reviewin
 					Title:       review.Title,
 					Description: review.Description,
 					Impact:      review.Impact,
+					CreatedAt:   actual.CreatedAt,
+					UpdatedAt:   actual.UpdatedAt,
 				},
 				actual,
 				"expected to have saved and set the ID which is used as primary key",
@@ -63,6 +68,21 @@ func StorageTest(t *testing.T, ctx context.Context, storeFactory func() reviewin
 			var errs validator.ValidationErrors
 			require.True(t, errors.As(err, &errs), "expected to have converted to validator.ValidationErrors")
 			require.GreaterOrEqualf(t, len(errs), 4, "expected at least the 4 fields at the time of writing as failing: %s", errs)
+		})
+
+		t.Run("when saving an object later it will record a new UpdatedAt", func(t *testing.T) {
+			review := validReview()
+			store := storeFactory()
+			first, err := store.Save(ctx, review)
+			require.NoError(t, err)
+
+			// postgres has microsecond resolution, so need to make sure enough time passes.
+			time.Sleep(time.Microsecond)
+			second, err := store.Save(ctx, first)
+			require.NoError(t, err)
+
+			elapsed := second.UpdatedAt.Sub(first.UpdatedAt)
+			require.GreaterOrEqual(t, elapsed, time.Nanosecond*10, "expected at least one nanosecond to have passed between both")
 		})
 	})
 
