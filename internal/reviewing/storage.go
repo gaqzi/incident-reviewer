@@ -8,4 +8,7 @@ type Storage interface {
 
 	// Get finds the review or returns NotFoundError.
 	Get(ctx context.Context, ID int64) (Review, error)
+
+	// All returns all the stored reviews with the most recent first.
+	All(ctx context.Context) ([]Review, error)
 }

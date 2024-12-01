@@ -50,6 +50,11 @@ func TestReviewing(t *testing.T) {
 			assert.Locator(page.Locator(".new .notice")).ToContainText("created"),
 			"expected to have some variant of created to indicate that we successfully started the review",
 		)
+		require.NoError(
+			t,
+			assert.Locator(page.Locator(".listing ul li")).ToHaveCount(1),
+			"expected to have the newly created review shown in the listing",
+		)
 
 		require.NoError(t, pw.Stop(), "failed to stop playwright")
 	})

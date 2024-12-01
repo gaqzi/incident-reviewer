@@ -1,9 +1,11 @@
 package http
 
 import (
+	"context"
 	"embed"
 	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/donseba/go-htmx"
 	"github.com/go-playground/form/v4"
@@ -95,10 +97,15 @@ func (a *App) renderIndex(h *htmx.Handler, r *http.Request, data map[string]any)
 		data["Report"] = map[string]any{}
 	}
 	if _, ok := data["Reviews"]; !ok {
-		data["Reviews"] = []reviewing.Review{}
+		ctx, cancel := context.WithTimeout(r.Context(), time.Second)
+		reviews, err := a.store.All(ctx)
+		if err != nil {
+			// Only log the error and set the empty listing as it's an okay fallback instead of returning an error
+			slog.Error("failed to fetch all reviews", "error", err)
+		}
+		cancel()
+		data["Reviews"] = reviews
 	}
-	// if _, ok := data["New"]; !ok {
-	// }
 
 	page := htmx.NewComponent("templates/index.html").
 		FS(templates).
