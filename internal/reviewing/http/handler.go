@@ -45,11 +45,15 @@ func (a *App) Index(w http.ResponseWriter, r *http.Request) {
 	a.renderIndex(h, r, map[string]any{})
 }
 
-type IncidentBasic struct {
-	URL         string `form:"url"         validate:"required,http_url"`
-	Title       string `form:"title"       validate:"required"`
-	Description string `form:"description" validate:"required"`
-	Impact      string `form:"impact"      validate:"required"`
+type ReviewBasic struct {
+	ID          int64  `form:"id"`
+	URL         string `form:"url"`
+	Title       string `form:"title"`
+	Description string `form:"description"`
+	Impact      string `form:"impact"`
+
+	UpdatedAt time.Time
+	CreatedAt time.Time
 }
 
 func (a *App) Create(w http.ResponseWriter, r *http.Request) {
@@ -61,7 +65,7 @@ func (a *App) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var inc IncidentBasic
+	var inc ReviewBasic
 	if err := a.decoder.Decode(&inc, r.Form); err != nil {
 		slog.Error("failed to decode basic incident form", "error", err)
 		h.WriteHeader(http.StatusBadRequest)
@@ -105,7 +109,7 @@ func (a *App) renderIndex(h *htmx.Handler, r *http.Request, data map[string]any)
 			slog.Error("failed to fetch all reviews", "error", err)
 		}
 		cancel()
-		data["Reviews"] = reviews
+		data["Reviews"] = convertToHttpObject(reviews)
 	}
 
 	page := htmx.NewComponent("templates/index.html").
@@ -125,4 +129,23 @@ func (a *App) renderIndex(h *htmx.Handler, r *http.Request, data map[string]any)
 
 func baseContent() htmx.RenderableComponent {
 	return htmx.NewComponent("templates/base.html").FS(templates)
+}
+
+func convertToHttpObject(rs []reviewing.Review) []ReviewBasic {
+	ret := make([]ReviewBasic, 0, len(rs))
+
+	for _, r := range rs {
+		ret = append(ret, ReviewBasic{
+			ID:          r.ID,
+			URL:         r.URL,
+			Title:       r.Title,
+			Description: r.Description,
+			Impact:      r.Impact,
+
+			CreatedAt: r.CreatedAt,
+			UpdatedAt: r.UpdatedAt,
+		})
+	}
+
+	return ret
 }
