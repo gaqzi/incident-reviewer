@@ -16,13 +16,19 @@ import (
 // It's implemented this way to ensure that the implementations can be used interchangeably, and to allow for the use
 // of lighter implementations during testing.
 func StorageTest(t *testing.T, ctx context.Context, storeFactory func() reviewing.Storage) {
-	validReview := func() reviewing.Review {
-		return reviewing.Review{
+	validReview := func(modify ...func(r *reviewing.Review)) reviewing.Review {
+		review := reviewing.Review{
 			URL:         "https://example.com/reviews/1",
 			Title:       "Something",
 			Description: "At the bottom of the sea",
 			Impact:      "did a bunch of things",
 		}
+
+		for _, mod := range modify {
+			mod(&review)
+		}
+
+		return review
 	}
 
 	t.Run("Save", func(t *testing.T) {
@@ -80,6 +86,57 @@ func StorageTest(t *testing.T, ctx context.Context, storeFactory func() reviewin
 			require.NoError(t, err, "expected to have fetched successfully when just saving the object")
 
 			require.Equal(t, actual, expected, "expected the objects to have the same info when no changes between save and fetch")
+		})
+	})
+
+	t.Run("All", func(t *testing.T) {
+		t.Run("with no stored reviews it returns an empty list", func(t *testing.T) {
+			store := storeFactory()
+
+			reviews, err := store.All(ctx)
+			require.NoError(t, err)
+
+			require.Empty(t, reviews, "expected to have gotten back no items")
+		})
+
+		t.Run("returns the only stored item when only one exists", func(t *testing.T) {
+			store := storeFactory()
+			review, err := store.Save(ctx, validReview())
+			require.NoError(t, err, "expected to have saved successfully")
+
+			actual, err := store.All(ctx)
+			require.NoError(t, err)
+
+			require.NotEmpty(t, actual)
+			require.Equal(
+				t,
+				[]reviewing.Review{review},
+				actual,
+				"expected to have gotten back an item matching the only stored one",
+			)
+		})
+
+		t.Run("with multiple reviews, returns them in descending creation order", func(t *testing.T) {
+			store := storeFactory()
+			review1, err := store.Save(ctx, validReview())
+			require.NoError(t, err, "expected to have saved successfully")
+			review2, err := store.Save(ctx, validReview(func(r *reviewing.Review) {
+				r.URL = "https://example.com/reviews/2"
+				r.Title = "Another review"
+			}))
+
+			actual, err := store.All(ctx)
+			require.NoError(t, err)
+
+			require.Equal(
+				t,
+				[]reviewing.Review{
+					review2,
+					review1,
+				},
+				actual,
+				"expected the most recently created item to be returned first",
+			)
 		})
 	})
 }
