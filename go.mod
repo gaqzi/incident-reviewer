@@ -4,6 +4,7 @@ go 1.23.3
 
 require (
 	github.com/donseba/go-htmx v1.12.0
+	github.com/go-playground/form/v4 v4.2.1
 	github.com/go-playground/validator/v10 v10.23.0
 	github.com/go-sqlx/sqlx v1.3.8
 	github.com/lib/pq v1.10.9

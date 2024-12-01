@@ -8,6 +8,7 @@ import (
 
 	httpassets "github.com/gaqzi/incident-reviewer/internal/platform/http"
 	revhttp "github.com/gaqzi/incident-reviewer/internal/reviewing/http"
+	reviewstorage "github.com/gaqzi/incident-reviewer/internal/reviewing/storage"
 )
 
 type Config struct {
@@ -44,7 +45,8 @@ func Start(ctx context.Context, cfg Config) (*Server, error) {
 	server.Handler = mux
 
 	httpassets.PublicAssets(mux)
-	mux.Handle("/reviews", revhttp.Handler())
+	reviewStore := reviewstorage.NewMemoryStore()
+	mux.Handle("/reviews", revhttp.Handler(reviewStore))
 
 	go (func() {
 		_ = server.Serve(ln)
