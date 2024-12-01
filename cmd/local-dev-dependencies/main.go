@@ -32,6 +32,10 @@ var (
   stop — fast shutdown`)
 	stopChan = make(chan struct{})
 	doneChan = make(chan struct{})
+	errChan  = make(chan error)
+
+	ctx       context.Context
+	cancelCtx func()
 
 	// I need to tell the daemon to serve the healthcheck endpoint
 	// at a known address to the parent, so I'll set it in an env variable
@@ -41,8 +45,9 @@ var (
 
 func main() {
 	flag.Parse()
-	daemon.AddCommand(daemon.StringFlag(signal, "quit"), syscall.SIGQUIT, termHandler)
-	daemon.AddCommand(daemon.StringFlag(signal, "stop"), syscall.SIGTERM, termHandler)
+	ctx, cancelCtx = context.WithCancel(context.Background())
+	daemon.AddCommand(daemon.StringFlag(signal, "quit"), syscall.SIGQUIT, termHandlerCreator(cancelCtx))
+	daemon.AddCommand(daemon.StringFlag(signal, "stop"), syscall.SIGTERM, termHandlerCreator(cancelCtx))
 
 	cntxt := &daemon.Context{
 		PidFileName: "tmp/local-dev-dependencies.pid",
@@ -111,16 +116,22 @@ func main() {
 		}
 		req.WithContext(ctx)
 
+		var failedConn int
 		for {
 			resp, err := http.DefaultClient.Do(req)
 			if err != nil {
 				if strings.Contains(err.Error(), "connection refused") {
+					if failedConn >= 20 { // arbitrary number of times, with 100ms wait it's 2s of no responses so seems fair 🤷
+						log.Fatalf("failed to get health check %d times, check tmp/local-dev-dependencies.log", failedConn)
+					}
 					time.Sleep(100 * time.Millisecond)
+					failedConn++
 					continue
 				}
 
 				log.Fatalf("failed to call health check endpoint: %s", err)
 			}
+			failedConn = 0
 
 			body, err := io.ReadAll(resp.Body)
 			if err != nil {
@@ -144,14 +155,22 @@ func main() {
 	log.Print("up and running")
 
 	go serveHTTP()
-	go startPostgres(stopChan, doneChan)
+	go startPostgres(stopChan, doneChan, errChan)
+	go (func() {
+		if err := daemon.ServeSignals(); err != nil {
+			log.Printf("failed to respond to signal: %s", err)
+		}
+	})()
 
-	err = daemon.ServeSignals()
-	if err != nil {
-		log.Printf("Error: %s", err.Error())
+	select {
+	case <-ctx.Done():
+		log.Printf("context cancelled, shutting down")
+		os.Exit(0)
+	case err := <-errChan:
+		log.Printf(err.Error())
+		log.Printf("shutting down")
+		os.Exit(1)
 	}
-
-	log.Println("daemon terminated")
 }
 
 func stop(cntxt *daemon.Context) {
@@ -205,13 +224,15 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "postgresUp=%t", postgresUp)
 }
 
-func startPostgres(stopChan <-chan struct{}, doneChan chan<- struct{}) {
+func startPostgres(stopChan <-chan struct{}, doneChan chan<- struct{}, errChan chan<- error) {
 	// If 2min is not long enough for initial starts then change it, for now I'll guess it's good enough,
 	// but that's from sitting with a stable (and fast) internet connection… If needed I'll make it configurable later.
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	err, conn, done := test.StartPostgres(ctx)
 	if err != nil {
-		log.Fatalf("failed to start postgres: %s", err.Error())
+		errChan <- fmt.Errorf("failed to start postgres: %w", err)
+		cancel()
+		return
 	}
 
 	f, err := os.Create("tmp/postgres.conf")
@@ -233,11 +254,14 @@ func startPostgres(stopChan <-chan struct{}, doneChan chan<- struct{}) {
 	}
 }
 
-func termHandler(sig os.Signal) error {
-	log.Println("terminating...")
-	stopChan <- struct{}{}
-	if sig == syscall.SIGQUIT {
-		<-doneChan
+func termHandlerCreator(cancel func()) func(sig os.Signal) error {
+	return func(sig os.Signal) error {
+		log.Println("terminating...")
+		stopChan <- struct{}{}
+		if sig == syscall.SIGQUIT {
+			<-doneChan
+		}
+		cancel()
+		return daemon.ErrStop
 	}
-	return daemon.ErrStop
 }
