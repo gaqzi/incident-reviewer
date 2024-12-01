@@ -9,6 +9,7 @@ import (
 
 	"github.com/donseba/go-htmx"
 	"github.com/go-playground/form/v4"
+	"github.com/gosimple/slug"
 
 	"github.com/gaqzi/incident-reviewer/internal/reviewing"
 )
@@ -110,6 +111,7 @@ func (a *App) renderIndex(h *htmx.Handler, r *http.Request, data map[string]any)
 	page := htmx.NewComponent("templates/index.html").
 		FS(templates).
 		SetData(data).
+		AddTemplateFunction("slug", slug.Make).
 		With(htmx.NewComponent("templates/_new.html").FS(templates), "New").
 		Wrap(baseContent(), "Body")
 

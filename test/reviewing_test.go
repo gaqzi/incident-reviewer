@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gosimple/slug"
 	"github.com/playwright-community/playwright-go"
 	"github.com/stretchr/testify/require"
 
@@ -52,8 +53,21 @@ func TestReviewing(t *testing.T) {
 		)
 		require.NoError(
 			t,
+			assert.Locator(page.Locator(".new .notice a")).
+				ToHaveAttribute("href", "/reviews/1-"+slug.Make("Undersea cable broken")),
+			"expected to have slugified the URL correctly for the notice",
+		)
+
+		require.NoError(
+			t,
 			assert.Locator(page.Locator(".listing ul li")).ToHaveCount(1),
 			"expected to have the newly created review shown in the listing",
+		)
+		require.NoError(
+			t,
+			assert.Locator(page.Locator(".listing ul li a")).
+				ToHaveAttribute("href", "/reviews/1-"+slug.Make("Undersea cable broken")),
+			"expected to have slugified the URL correctly in the listing",
 		)
 
 		require.NoError(t, pw.Stop(), "failed to stop playwright")
