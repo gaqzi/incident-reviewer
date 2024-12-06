@@ -2,6 +2,7 @@ package test_test
 
 import (
 	"context"
+	"os"
 	"testing"
 	"time"
 
@@ -11,6 +12,32 @@ import (
 
 	"github.com/gaqzi/incident-reviewer/internal/app"
 )
+
+var (
+	Headful = os.Getenv("HEADFUL") == "" // runs test in headless if the variable is set to something
+)
+
+func getBrowserName() string {
+	browserName, hasEnv := os.LookupEnv("BROWSER")
+	if hasEnv {
+		return browserName
+	}
+	return "chromium"
+}
+
+func getBrowser(pw *playwright.Playwright) playwright.BrowserType {
+	browserName := getBrowserName()
+	switch browserName {
+	case "chromium", "":
+		return pw.Chromium
+	case "firefox":
+		return pw.Firefox
+	case "webkit":
+		return pw.WebKit
+	default:
+		panic("unknown browser name: " + browserName)
+	}
+}
 
 func TestReviewing(t *testing.T) {
 	t.Run("Create a new incident review", func(t *testing.T) {
@@ -24,10 +51,9 @@ func TestReviewing(t *testing.T) {
 
 		pw, err := playwright.Run()
 		require.NoError(t, err, "could not start playwright")
-		browserOpts := playwright.BrowserTypeLaunchOptions{
-			Headless: playwright.Bool(false),
-		}
-		browser, err := pw.Chromium.Launch(browserOpts)
+		browser, err := getBrowser(pw).Launch(playwright.BrowserTypeLaunchOptions{
+			Headless: playwright.Bool(Headful),
+		})
 		require.NoError(t, err, "failed to launch the browser")
 		page, err := browser.NewPage()
 		require.NoError(t, err, "could not create page")

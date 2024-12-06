@@ -8,6 +8,12 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        browser:
+          - chromium
+          - firefox
+
 
     steps:
       - uses: actions/checkout@v4
@@ -16,3 +22,5 @@ jobs:
           go-version-file: 'go.mod'
 
       - run: script/cibuild
+        env:
+          BROWSER: ${{ matrix.browser }}

@@ -1,4 +1,5 @@
 #!/bin/bash
 BIN_DIR=$(realpath $(dirname $0))
 
-exec "$BIN_DIR/test"
+go run ./cmd/local-dev-dependencies playwright && \
+  exec "$BIN_DIR/test"
