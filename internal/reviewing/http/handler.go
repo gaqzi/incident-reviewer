@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/donseba/go-htmx"
+	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/form/v4"
 	"github.com/gosimple/slug"
 
@@ -25,18 +26,17 @@ type App struct {
 	store   reviewing.Storage
 }
 
-func Handler(store reviewing.Storage) *http.ServeMux {
+func Handler(store reviewing.Storage) func(chi.Router) {
 	app := App{
 		htmx:    htmx.New(),
 		decoder: form.NewDecoder(),
 		store:   store,
 	}
 
-	mux := http.NewServeMux()
-	mux.Handle("GET /", http.HandlerFunc(app.Index))
-	mux.Handle("POST /", http.HandlerFunc(app.Create))
-
-	return mux
+	return func(r chi.Router) {
+		r.Get("/", app.Index)
+		r.Post("/", app.Create)
+	}
 }
 
 func (a *App) Index(w http.ResponseWriter, r *http.Request) {
