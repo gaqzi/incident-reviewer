@@ -1,0 +1,4 @@
+#!/bin/bash
+
+## Finds all comments for tech debt in codebase.
+git grep '@techdebt(' | grep -v '^TECHDEBT.md:' | grep -v '^script/techdebt:'
