@@ -8,10 +8,14 @@ import (
 //go:embed assets/*
 var content embed.FS
 
+type getRoutabler interface {
+	Handle(string, http.Handler)
+}
+
 // PublicAssets will register /assets/ and serve all assets in the ./assets folder.
-func PublicAssets(mux *http.ServeMux) {
+func PublicAssets(mux getRoutabler) {
 	mux.Handle(
-		"GET /assets/",
+		"/assets/*",
 		http.StripPrefix("/", http.FileServer(http.FS(content))),
 	)
 }

@@ -3,8 +3,14 @@ package app
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net"
 	"net/http"
+	"time"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/httplog/v2"
 
 	httpassets "github.com/gaqzi/incident-reviewer/internal/platform/http"
 	revhttp "github.com/gaqzi/incident-reviewer/internal/reviewing/http"
@@ -41,12 +47,29 @@ func Start(ctx context.Context, cfg Config) (*Server, error) {
 
 	server := http.Server{}
 	server.BaseContext = func(_ net.Listener) context.Context { return ctx }
-	mux := http.NewServeMux()
-	server.Handler = mux
+	r := chi.NewRouter()
+	server.Handler = r
 
-	httpassets.PublicAssets(mux)
+	logger := httplog.NewLogger("incident-reviewer", httplog.Options{
+		// JSON:           true,
+		LogLevel:       slog.LevelInfo,
+		Concise:        true,
+		RequestHeaders: true,
+		QuietDownRoutes: []string{
+			"/",
+			"/favicon.ico",
+		},
+		QuietDownPeriod: 10 * time.Second,
+	})
+
+	r.Use(middleware.RequestID)
+	r.Use(middleware.RealIP)
+	r.Use(httplog.RequestLogger(logger))
+	r.Use(middleware.Recoverer)
+
+	httpassets.PublicAssets(r)
 	reviewStore := reviewstorage.NewMemoryStore()
-	mux.Handle("/reviews", revhttp.Handler(reviewStore))
+	r.Route("/reviews", revhttp.Handler(reviewStore))
 
 	go (func() {
 		_ = server.Serve(ln)
