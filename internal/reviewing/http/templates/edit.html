@@ -1,0 +1,11 @@
+{{ with .Data.Review }}
+    <section class="details" id="review-details">
+        <form method="POST" action="/reviews/{{ .ID }}/edit">
+            <input type="hidden" name="_method" value="put">
+            <input type="hidden" name="id" value="{{ .ID }}">
+            {{ template "review-fields" . }}
+
+            <button type="submit">Update</button>
+        </form>
+    </section>
+{{ end}}

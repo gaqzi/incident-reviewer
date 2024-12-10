@@ -1,0 +1,20 @@
+{{ if .Data.Review }}
+    {{ with .Data.Review }}
+        <section class="details" id="review-details">
+            <h1 class="title">{{ .Title }}</h1>
+
+            <p class="description">{{ .Description }}</p>
+
+            <p class="impact">{{ .Impact }}</p>
+
+            <ul>
+                <li><time class="createdAt" datetime="{{ .CreatedAt.Format "2006-01-02T15:04:05.999999999Z07:00" }}">{{ .CreatedAt }}</time></li>
+                <li><time class="updatedAt" datetime="{{ .UpdatedAt.Format "2006-01-02T15:04:05.999999999Z07:00" }}">{{ .UpdatedAt }}</time></li>
+            </ul>
+
+            <form method="GET" action="/reviews/{{ .ID }}/edit" hx-target="#review-details">
+                <button type="submit">Edit</button>
+            </form>
+        </section>
+    {{ end}}
+{{ end }}
