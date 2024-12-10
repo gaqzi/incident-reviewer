@@ -96,6 +96,15 @@ func TestReviewing(t *testing.T) {
 			"expected to have slugified the URL correctly in the listing",
 		)
 
+		// Time to click into it and edit
+		require.NoError(t, page.Locator(".new .notice a").Click())
+		require.NoError(t, page.Locator(`.details form button[type="submit"]`).Click())
+
+		require.NoError(t, page.Locator(`.details form [name="title"]`).Fill("Broken cable undersea"))
+		require.NoError(t, page.Locator(`.details form button[type="submit"]`).Click())
+
+		require.NoError(t, assert.Locator(page.Locator(`.details .title`)).ToHaveText("Broken cable undersea"))
+
 		require.NoError(t, pw.Stop(), "failed to stop playwright")
 	})
 }

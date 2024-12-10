@@ -1,0 +1,13 @@
+{{ with .Data.Review }}
+    <section class="details" id="review-details">
+        <form method="POST" action="/reviews/{{ .ID }}/edit">
+            <input type="hidden" name="_method" value="put">
+            <input type="hidden" name="id" value="{{ .ID }}">
+            <input type="hidden" name="created_at" value="{{ .CreatedAt.Format "2006-01-02T15:04:05Z07:00"  }}">
+            <input type="hidden" name="updated_at" value="{{ .UpdatedAt.Format "2006-01-02T15:04:05Z07:00" }}">
+            {{ template "review-fields" . }}
+
+            <button type="submit">Update</button>
+        </form>
+    </section>
+{{ end}}
