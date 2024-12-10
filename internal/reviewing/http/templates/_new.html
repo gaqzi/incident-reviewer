@@ -1,30 +1,6 @@
 <form method="post" action="{{ .URL }}">
-    <ul>
-        <li>
-            <label>
-                Report link:
-                <input type="url" name="url" value="{{ .Data.Report.Url }}" required>
-            </label>
-        </li>
-        <li>
-            <label>
-                Title:
-                <input type="text" name="title" value="{{ .Data.Report.Title }}" required>
-            </label>
-        </li>
-        <li>
-            <label>
-                Description:
-                <textarea name="description" required>{{ .Data.Report.Description }}</textarea>
-            </label>
-        </li>
-        <li>
-            <label>
-                Impact:
-                <textarea name="impact" required>{{ .Data.Report.Impact }}</textarea>
-            </label>
-        </li>
-    </ul>
+
+    {{ template "review-fields" .Data.Review }}
 
     <button type="submit">Create!</button>
 </form>

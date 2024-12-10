@@ -96,6 +96,26 @@ func TestReviewing(t *testing.T) {
 			"expected to have slugified the URL correctly in the listing",
 		)
 
+		// Time to click into it and edit
+		require.NoError(t, page.Locator(".new .notice a").Click())
+		createdAt, err := page.Locator(".details .createdAt").GetAttribute("datetime")
+		require.NoError(t, err, "failed to get createdAt")
+		updatedAt, err := page.Locator(".details .updatedAt").GetAttribute("datetime")
+		require.NoError(t, err, "failed to get updatedAt")
+		require.NoError(t, page.Locator(`.details form button[type="submit"]`).Click())
+
+		require.NoError(t, page.Locator(`.details form [name="title"]`).Fill("Broken cable undersea"))
+		require.NoError(t, page.Locator(`.details form button[type="submit"]`).Click())
+
+		require.NoError(t, assert.Locator(page.Locator(`.details .title`)).ToHaveText("Broken cable undersea"))
+		newCreatedAt, err := page.Locator(".details .createdAt").GetAttribute("datetime")
+		require.NoError(t, err, "failed to get the new createdAt")
+		newUpdatedAt, err := page.Locator(".details .updatedAt").GetAttribute("datetime")
+		require.NoError(t, err, "failed to get the new updatedAt")
+
+		require.Equal(t, createdAt, newCreatedAt, "expected to not have changed the created at when saving")
+		require.NotEqual(t, updatedAt, newUpdatedAt, "expected to have changed the updatedAt when saving")
+
 		require.NoError(t, pw.Stop(), "failed to stop playwright")
 	})
 }

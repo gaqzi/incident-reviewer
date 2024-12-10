@@ -1,0 +1,28 @@
+{{ define "review-fields" }}
+<ul>
+    <li>
+        <label>
+            Report link:
+            <input type="url" name="url" value="{{ .URL }}" required>
+        </label>
+    </li>
+    <li>
+        <label>
+            Title:
+            <input type="text" name="title" value="{{ .Title }}" required>
+        </label>
+    </li>
+    <li>
+        <label>
+            Description:
+            <textarea name="description" required>{{ .Description }}</textarea>
+        </label>
+    </li>
+    <li>
+        <label>
+            Impact:
+            <textarea name="impact" required>{{ .Impact }}</textarea>
+        </label>
+    </li>
+</ul>
+{{ end }}
