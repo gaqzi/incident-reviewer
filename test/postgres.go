@@ -15,9 +15,13 @@ import (
 	"github.com/testcontainers/testcontainers-go/wait"
 )
 
+const (
+	PostgresContainer = "docker.io/postgres:16-alpine"
+)
+
 func StartPostgres(ctx context.Context) (err error, conn string, done func()) {
 	postgresContainer, err := postgres.Run(ctx,
-		"docker.io/postgres:16-alpine",
+		PostgresContainer,
 		postgres.WithDatabase("incident_reviewer"),
 		testcontainers.WithWaitStrategy(
 			wait.ForLog("database system is ready to accept connections").
