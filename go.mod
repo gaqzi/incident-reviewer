@@ -9,7 +9,7 @@ require (
 	github.com/go-sqlx/sqlx v1.3.8
 	github.com/gosimple/slug v1.14.0
 	github.com/lib/pq v1.10.9
-	github.com/playwright-community/playwright-go v0.4802.0
+	github.com/playwright-community/playwright-go v0.4901.0
 	github.com/pressly/goose/v3 v3.23.0
 	github.com/sevlyar/go-daemon v0.1.6
 	github.com/stretchr/testify v1.10.0
