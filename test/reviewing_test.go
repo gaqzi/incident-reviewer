@@ -44,7 +44,7 @@ func TestReviewing(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
 		cfg := app.NewConfig()
-		cfg.Addr = ":0"
+		cfg.Addr = "localhost:0" // bind to localhost to avoid firewall warnings
 		server, err := app.Start(ctx, cfg)
 		require.NoError(t, err, "failed to start the server")
 		defer (func() { _ = server.Stop(context.Background()) })()
