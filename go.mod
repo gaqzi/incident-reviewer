@@ -10,7 +10,7 @@ require (
 	github.com/gosimple/slug v1.14.0
 	github.com/lib/pq v1.10.9
 	github.com/playwright-community/playwright-go v0.4901.0
-	github.com/pressly/goose/v3 v3.23.0
+	github.com/pressly/goose/v3 v3.23.1
 	github.com/sevlyar/go-daemon v0.1.6
 	github.com/stretchr/testify v1.10.0
 	github.com/testcontainers/testcontainers-go v0.34.0
