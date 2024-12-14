@@ -8,7 +8,6 @@ import (
 	"log/slog"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/donseba/go-htmx"
@@ -29,25 +28,6 @@ type App struct {
 	htmx    *htmx.HTMX
 	decoder *form.Decoder
 	store   reviewing.Storage
-}
-
-// HTTPMethodFromFormField parses the _method to specify the method for the router.
-// https://github.com/go-chi/chi/issues/355#issuecomment-522699995
-func HTTPMethodFromFormField(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodPost {
-			switch strings.ToLower(r.PostFormValue("_method")) {
-			case "put":
-				r.Method = http.MethodPut
-			case "patch":
-				r.Method = http.MethodPatch
-			case "delete":
-				r.Method = http.MethodDelete
-			default:
-			}
-		}
-		next.ServeHTTP(w, r)
-	})
 }
 
 func Handler(store reviewing.Storage) func(chi.Router) {
