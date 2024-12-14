@@ -7,6 +7,12 @@
 
             <p class="impact">{{ .Impact }}</p>
 
+            <p class="where">{{ .Where }}</p>
+
+            <p class="reportProximalCause">{{ .ReportProximalCause }}</p>
+
+            <p class="reportTrigger">{{ .ReportTrigger }}</p>
+
             <ul>
                 <li><time class="createdAt" datetime="{{ .CreatedAt.Format "2006-01-02T15:04:05.999999999Z07:00" }}">{{ .CreatedAt }}</time></li>
                 <li><time class="updatedAt" datetime="{{ .UpdatedAt.Format "2006-01-02T15:04:05.999999999Z07:00" }}">{{ .UpdatedAt }}</time></li>

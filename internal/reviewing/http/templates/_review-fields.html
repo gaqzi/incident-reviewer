@@ -24,5 +24,23 @@
             <textarea name="impact" required>{{ .Impact }}</textarea>
         </label>
     </li>
+    <li>
+        <label>
+            Where:
+            <textarea name="where" required>{{ .Where }}</textarea>
+        </label>
+    </li>
+    <li>
+        <label>
+            Report <dfn title="The closest direct cause for the incident, often called the root cause">proximal cause</dfn>:
+            <textarea name="reportProximalCause" required>{{ .ReportProximalCause }}</textarea>
+        </label>
+    </li>
+    <li>
+        <label>
+            Report <dfn title="The change that lead to the proximal cause which lead to the incident">trigger</dfn>:
+            <textarea name="reportTrigger" required>{{ .ReportTrigger }}</textarea>
+        </label>
+    </li>
 </ul>
 {{ end }}

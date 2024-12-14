@@ -19,10 +19,13 @@ import (
 func StorageTest(t *testing.T, ctx context.Context, storeFactory func() reviewing.Storage) {
 	validReview := func(modify ...func(r *reviewing.Review)) reviewing.Review {
 		review := reviewing.Review{
-			URL:         "https://example.com/reviews/1",
-			Title:       "Something",
-			Description: "At the bottom of the sea",
-			Impact:      "did a bunch of things",
+			URL:                 "https://example.com/reviews/1",
+			Title:               "Something",
+			Description:         "At the bottom of the sea",
+			Impact:              "did a bunch of things",
+			Where:               "At land",
+			ReportProximalCause: "Broken",
+			ReportTrigger:       "Special operation",
 		}
 
 		for _, mod := range modify {
@@ -45,13 +48,16 @@ func StorageTest(t *testing.T, ctx context.Context, storeFactory func() reviewin
 			require.Equal(
 				t,
 				reviewing.Review{
-					ID:          actual.ID,
-					URL:         review.URL,
-					Title:       review.Title,
-					Description: review.Description,
-					Impact:      review.Impact,
-					CreatedAt:   actual.CreatedAt,
-					UpdatedAt:   actual.UpdatedAt,
+					ID:                  actual.ID,
+					URL:                 review.URL,
+					Title:               review.Title,
+					Description:         review.Description,
+					Impact:              review.Impact,
+					Where:               review.Where,
+					ReportProximalCause: review.ReportProximalCause,
+					ReportTrigger:       review.ReportTrigger,
+					CreatedAt:           actual.CreatedAt,
+					UpdatedAt:           actual.UpdatedAt,
 				},
 				actual,
 				"expected to have saved and set the ID which is used as primary key",
@@ -144,6 +150,7 @@ func StorageTest(t *testing.T, ctx context.Context, storeFactory func() reviewin
 				r.URL = "https://example.com/reviews/2"
 				r.Title = "Another review"
 			}))
+			require.NoError(t, err)
 
 			actual, err := store.All(ctx)
 			require.NoError(t, err)
