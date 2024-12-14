@@ -1,3 +1,9 @@
 #!/bin/bash
 
+## Run golangci-lint if not on CI
+if [ "$CI" != 'true' ] ; then
+  golangci-lint run || exit 1
+fi
+
+## Run the go tests
 exec go test -race ./...

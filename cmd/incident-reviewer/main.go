@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/gaqzi/incident-reviewer/internal/app"
@@ -20,13 +21,13 @@ func main() {
 
 	slog.Info("server started", "addr", "http://"+server.Config.Addr)
 
-	shutdown := make(chan os.Signal)
-	signal.Notify(shutdown, os.Interrupt, os.Kill)
+	shutdown := make(chan os.Signal, 2)
+	signal.Notify(shutdown, os.Interrupt, syscall.SIGTERM)
 
 	for {
 		sig := <-shutdown
 		switch sig {
-		case os.Interrupt, os.Kill:
+		case os.Interrupt, syscall.SIGTERM:
 			cancel()
 			shutCtx, shutCancel := context.WithTimeout(context.Background(), 10*time.Second)
 
