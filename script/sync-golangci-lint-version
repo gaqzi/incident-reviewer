@@ -5,14 +5,15 @@
 : ${VERSION:=$1}
 
 if [ -z "$VERSION" ]; then
-  GO_VERSION="latest"
+  GOLANGCI_LINT_VERSION="latest"
 fi
 
 ## Set to the specified version, latest if none specified on the cli
-asdf install golang "$GO_VERSION"
-asdf local golang "$GO_VERSION"
-GO_VERSION=$(grep "golang " .tool-versions | cut -d' ' -f 2)
+asdf install golangci-lint "$GOLANGCI_LINT_VERSION"
+asdf local golangci-lint "$GOLANGCI_LINT_VERSION"
+GOLANGCI_LINT_VERSION=$(grep golangci-lint .tool-versions | cut -d' ' -f 2)
 
 ## Update go.mod to require the specified version,
 ## which we then rely on in the workflow for CI
-sed -I '' -E "s/^go (.*)$/go $GO_VERSION/" go.mod
+MATCHING_COMMENT="# golangci-lint version"
+sed -I '' -E "s/(version:) v(.*)(  $MATCHING_COMMENT)/\1 v$GOLANGCI_LINT_VERSION\3/" .github/workflows/ci.yml

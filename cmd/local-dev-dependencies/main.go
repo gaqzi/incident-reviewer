@@ -117,7 +117,7 @@ func main() {
 		if err != nil {
 			log.Fatalf("failed to create http request: %s", err)
 		}
-		req.WithContext(ctx)
+		req = req.WithContext(ctx)
 
 		var failedConn int
 		for {
@@ -152,7 +152,7 @@ func main() {
 	}
 
 	// This code will only run in the child/daemon
-	defer cntxt.Release()
+	defer (func() { _ = cntxt.Release() })()
 
 	log.Print("- - - - - - - - - - - - - - -")
 	log.Print("up and running")
@@ -170,7 +170,7 @@ func main() {
 		log.Printf("context cancelled, shutting down")
 		os.Exit(0)
 	case err := <-errChan:
-		log.Printf(err.Error())
+		log.Print(err.Error())
 		log.Printf("shutting down")
 		os.Exit(1)
 	}
@@ -219,7 +219,7 @@ func serveHTTP() {
 	}
 	http.HandleFunc("/", httpHandler)
 	log.Printf("about to listen to %q", listenAddr)
-	http.ListenAndServe(listenAddr, nil)
+	_ = http.ListenAndServe(listenAddr, nil)
 }
 
 func httpHandler(w http.ResponseWriter, r *http.Request) {
@@ -248,13 +248,11 @@ func startPostgres(stopChan <-chan struct{}, doneChan chan<- struct{}, errChan c
 	cancel()
 
 	postgresUp = true
-	select {
-	case <-stopChan:
-		log.Printf("received stop signal")
-		done()
-		log.Printf("stopped postgres, time to report back")
-		doneChan <- struct{}{}
-	}
+	<-stopChan
+	log.Printf("received stop signal")
+	done()
+	log.Printf("stopped postgres, time to report back")
+	doneChan <- struct{}{}
 }
 
 func termHandlerCreator(cancel func()) func(sig os.Signal) error {
