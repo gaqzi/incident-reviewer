@@ -46,10 +46,10 @@ func (s *MemoryStore) Save(_ context.Context, inc reviewing.Review) (reviewing.R
 	return inc, nil
 }
 
-func (s *MemoryStore) Get(_ context.Context, ID int64) (reviewing.Review, error) {
-	review, ok := s.data[ID]
+func (s *MemoryStore) Get(_ context.Context, id int64) (reviewing.Review, error) {
+	review, ok := s.data[id]
 	if !ok {
-		return reviewing.Review{}, &NoReviewError{ID: ID}
+		return reviewing.Review{}, &NoReviewError{ID: id}
 	}
 
 	return review, nil

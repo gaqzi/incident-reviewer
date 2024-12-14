@@ -115,6 +115,7 @@ func main() {
 
 		req, err := http.NewRequest("GET", fmt.Sprintf("http://%s/", healthcheckAddr), nil)
 		if err != nil {
+			// nolint:gocritic // that we can't run exitAfterDefer doesn't matter for this program, we're only doing a timeout and no other cleanup.
 			log.Fatalf("failed to create http request: %s", err)
 		}
 		req = req.WithContext(ctx)
