@@ -1,7 +1,8 @@
 linters:
   # Enable specific linter
   # https://golangci-lint.run/usage/linters/#enabled-by-default
-  enable: []
+  enable:
+    - gocritic
 
 linters-settings:
   gocritic:

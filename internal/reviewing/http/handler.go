@@ -118,7 +118,7 @@ func (a *App) renderIndex(h *htmx.Handler, r *http.Request, data map[string]any)
 			slog.Error("failed to fetch all reviews", "error", err)
 		}
 		cancel()
-		data["Reviews"] = convertToHttpObject(reviews)
+		data["Reviews"] = convertToHttpObjects(reviews)
 	}
 
 	page := htmx.NewComponent("templates/index.html").
@@ -166,7 +166,7 @@ func (a *App) Show(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := map[string]any{
-		"Review": review,
+		"Review": convertToHttpObject(review),
 	}
 
 	page := htmx.NewComponent("templates/show.html").
@@ -208,7 +208,7 @@ func (a *App) Edit(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := map[string]any{
-		"Review": review,
+		"Review": convertToHttpObject(review),
 	}
 
 	page := htmx.NewComponent("templates/edit.html").
@@ -284,26 +284,30 @@ func baseContent() htmx.RenderableComponent {
 	return htmx.NewComponent("templates/base.html").FS(templates)
 }
 
-func convertToHttpObject(rs []reviewing.Review) []ReviewBasic {
+func convertToHttpObjects(rs []reviewing.Review) []ReviewBasic {
 	ret := make([]ReviewBasic, 0, len(rs))
 
 	for _, r := range rs {
-		ret = append(ret, ReviewBasic{
-			ID:                  r.ID,
-			URL:                 r.URL,
-			Title:               r.Title,
-			Description:         r.Description,
-			Impact:              r.Impact,
-			Where:               r.Where,
-			ReportProximalCause: r.ReportProximalCause,
-			ReportTrigger:       r.ReportTrigger,
-
-			CreatedAt: r.CreatedAt,
-			UpdatedAt: r.UpdatedAt,
-		})
+		ret = append(ret, convertToHttpObject(r))
 	}
 
 	return ret
+}
+
+func convertToHttpObject(r reviewing.Review) ReviewBasic {
+	return ReviewBasic{
+		ID:                  r.ID,
+		URL:                 r.URL,
+		Title:               r.Title,
+		Description:         r.Description,
+		Impact:              r.Impact,
+		Where:               r.Where,
+		ReportProximalCause: r.ReportProximalCause,
+		ReportTrigger:       r.ReportTrigger,
+
+		CreatedAt: r.CreatedAt,
+		UpdatedAt: r.UpdatedAt,
+	}
 }
 
 // assignFromHttpObject takes all values from rb and assigns them to r.
