@@ -62,8 +62,8 @@ type ReviewBasic struct {
 	Description string `form:"description"`
 	Impact      string `form:"impact"`
 
-	UpdatedAt time.Time `form:"updated_at"`
-	CreatedAt time.Time `form:"created_at"`
+	UpdatedAt time.Time
+	CreatedAt time.Time
 }
 
 func (a *App) Create(w http.ResponseWriter, r *http.Request) {
