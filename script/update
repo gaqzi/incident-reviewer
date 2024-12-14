@@ -1,5 +1,8 @@
 #!/bin/bash
 
+## Stop local-dev-dependencies if it's running
+go run ./cmd/local-dev-dependencies stop
+
 ## Clean out tmp since we keep a bunch of files there
 rm -rf tmp/
 
