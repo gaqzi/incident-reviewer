@@ -48,6 +48,9 @@ func main() {
 	ctx, cancelCtx = context.WithCancel(context.Background())
 	daemon.AddCommand(daemon.StringFlag(signal, "quit"), syscall.SIGQUIT, termHandlerCreator(cancelCtx))
 	daemon.AddCommand(daemon.StringFlag(signal, "stop"), syscall.SIGTERM, termHandlerCreator(cancelCtx))
+	if err := os.MkdirAll("tmp", 0755); err != nil {
+		log.Fatalln(err.Error())
+	}
 
 	cntxt := &daemon.Context{
 		PidFileName: "tmp/local-dev-dependencies.pid",
