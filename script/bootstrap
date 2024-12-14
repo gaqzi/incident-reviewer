@@ -58,8 +58,8 @@ go mod download -x
 GOOSE_VERSION=$(awk '/pressly\/goose\/v3/ {print $2}' go.mod)
 go install -tags='no_clickhouse no_libsql no_mssql no_mysql no_vertica no_xflag no_ydb' "github.com/pressly/goose/v3/cmd/goose@$GOOSE_VERSION"
 
-## Install playwright dependencies
-go run ./cmd/local-dev-dependencies/ playwright
+## Install playwright dependencies, runs in the background
+go run ./cmd/local-dev-dependencies/ playwright &
 
 function get-container() {
   local variable_name="$1"
@@ -77,8 +77,11 @@ function get-container() {
   fi
 }
 
-## Download required testcontainer dependency containers
-get-container "PostgresContainer" "test/postgres.go"
+## Download required testcontainer dependency containers, runs in background
+get-container "PostgresContainer" "test/postgres.go" &
+
+## Wait for all background jobs to finish
+wait
 
 ## Always finish with go mod tidy
 # In case we get something nasty when installing everything it'll try and sort it out,
