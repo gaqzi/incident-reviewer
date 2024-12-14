@@ -56,11 +56,14 @@ func (a *App) Index(w http.ResponseWriter, r *http.Request) {
 }
 
 type ReviewBasic struct {
-	ID          int64  `form:"id"`
-	URL         string `form:"url"`
-	Title       string `form:"title"`
-	Description string `form:"description"`
-	Impact      string `form:"impact"`
+	ID                  int64  `form:"id"`
+	URL                 string `form:"url"`
+	Title               string `form:"title"`
+	Description         string `form:"description"`
+	Impact              string `form:"impact"`
+	Where               string `form:"where"`
+	ReportProximalCause string `form:"reportProximalCause"`
+	ReportTrigger       string `form:"reportTrigger"`
 
 	UpdatedAt time.Time
 	CreatedAt time.Time
@@ -83,12 +86,8 @@ func (a *App) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	review := reviewing.Review{
-		URL:         inc.URL,
-		Title:       inc.Title,
-		Description: inc.Description,
-		Impact:      inc.Impact,
-	}
+	review := reviewing.Review{}
+	assignFromHttpObject(inc, &review)
 	rev, err := a.store.Save(r.Context(), review)
 	if err != nil {
 		slog.Error("failed to save incident", "error", err)
@@ -267,10 +266,7 @@ func (a *App) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Update all the fields that can change. Note: We don't change CreatedAt
-	review.URL = inc.URL
-	review.Title = inc.Title
-	review.Description = inc.Description
-	review.Impact = inc.Impact
+	assignFromHttpObject(inc, &review)
 
 	_, err = a.store.Save(r.Context(), review)
 	if err != nil {
@@ -293,11 +289,14 @@ func convertToHttpObject(rs []reviewing.Review) []ReviewBasic {
 
 	for _, r := range rs {
 		ret = append(ret, ReviewBasic{
-			ID:          r.ID,
-			URL:         r.URL,
-			Title:       r.Title,
-			Description: r.Description,
-			Impact:      r.Impact,
+			ID:                  r.ID,
+			URL:                 r.URL,
+			Title:               r.Title,
+			Description:         r.Description,
+			Impact:              r.Impact,
+			Where:               r.Where,
+			ReportProximalCause: r.ReportProximalCause,
+			ReportTrigger:       r.ReportTrigger,
 
 			CreatedAt: r.CreatedAt,
 			UpdatedAt: r.UpdatedAt,
@@ -305,4 +304,15 @@ func convertToHttpObject(rs []reviewing.Review) []ReviewBasic {
 	}
 
 	return ret
+}
+
+// assignFromHttpObject takes all values from rb and assigns them to r.
+func assignFromHttpObject(rb ReviewBasic, r *reviewing.Review) {
+	r.URL = rb.URL
+	r.Title = rb.Title
+	r.Description = rb.Description
+	r.Impact = rb.Impact
+	r.Where = rb.Where
+	r.ReportProximalCause = rb.ReportProximalCause
+	r.ReportTrigger = rb.ReportTrigger
 }
