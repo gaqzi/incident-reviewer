@@ -26,23 +26,30 @@ var (
 )
 
 type ReviewingService interface {
-	// CreateContributingCause validates that the cause can be added to the review.
+	// Get finds the review or returns NotFoundError.
+	Get(ctx context.Context, id int64) (reviewing.Review, error)
+
+	// Save validates and stores a review.
+	Save(ctx context.Context, review reviewing.Review) (reviewing.Review, error)
+
+	// All returns all the stored reviews with the most recent first.
+	All(ctx context.Context) ([]reviewing.Review, error)
+
+	// AddContributingCause validates that the cause can be added to the review.
 	AddContributingCause(ctx context.Context, reviewID int64, causeID int64, why string) error
 }
 
 type App struct {
 	htmx       *htmx.HTMX
 	decoder    *form.Decoder
-	store      reviewing.Storage // TODO: refactor away usage of the storage and move all its cases into the service
 	causeStore normalized.ContributingCauseStorage
 	service    ReviewingService
 }
 
-func Handler(store reviewing.Storage, service ReviewingService, causeStore normalized.ContributingCauseStorage) func(chi.Router) {
+func Handler(service ReviewingService, causeStore normalized.ContributingCauseStorage) func(chi.Router) {
 	app := App{
 		htmx:       htmx.New(),
 		decoder:    form.NewDecoder(),
-		store:      store,
 		causeStore: causeStore,
 		service:    service,
 	}
@@ -125,7 +132,7 @@ func (a *App) Create(w http.ResponseWriter, r *http.Request) {
 
 	review := reviewing.Review{}
 	assignFromHttpObject(inc, &review)
-	rev, err := a.store.Save(r.Context(), review)
+	rev, err := a.service.Save(r.Context(), review)
 	if err != nil {
 		slog.Error("failed to save incident", "error", err)
 		h.WriteHeader(http.StatusInternalServerError)
@@ -149,7 +156,7 @@ func (a *App) renderIndex(h *htmx.Handler, r *http.Request, data map[string]any)
 	}
 	if _, ok := data["Reviews"]; !ok {
 		ctx, cancel := context.WithTimeout(r.Context(), time.Second)
-		reviews, err := a.store.All(ctx)
+		reviews, err := a.service.All(ctx)
 		if err != nil {
 			// Only log the error and set the empty listing as it's an okay fallback instead of returning an error
 			slog.Error("failed to fetch all reviews", "error", err)
@@ -189,7 +196,7 @@ func (a *App) Show(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	review, err := a.store.Get(r.Context(), reviewID)
+	review, err := a.service.Get(r.Context(), reviewID)
 	if err != nil {
 		slog.Info("get review error", "error", err)
 
@@ -246,7 +253,7 @@ func (a *App) Edit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	review, err := a.store.Get(r.Context(), reviewID)
+	review, err := a.service.Get(r.Context(), reviewID)
 	if err != nil {
 		slog.Info("get review error", "error", err)
 
@@ -290,7 +297,7 @@ func (a *App) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	review, err := a.store.Get(r.Context(), reviewID)
+	review, err := a.service.Get(r.Context(), reviewID)
 	if err != nil {
 		slog.Info("get review error", "error", err)
 
@@ -320,7 +327,7 @@ func (a *App) Update(w http.ResponseWriter, r *http.Request) {
 	// Update all the fields that can change. Note: We don't change CreatedAt
 	assignFromHttpObject(inc, &review)
 
-	_, err = a.store.Save(r.Context(), review)
+	_, err = a.service.Save(r.Context(), review)
 	if err != nil {
 		slog.Error("failed to save review", "id", reviewID, "error", err)
 		h.WriteHeader(http.StatusInternalServerError)

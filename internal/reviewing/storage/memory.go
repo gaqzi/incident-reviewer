@@ -15,7 +15,7 @@ import (
 type MemoryStore struct {
 	data      map[int64]reviewing.Review
 	currentID int64
-	validate  *validator.Validate
+	validate  *validator.Validate // TODO: move validation into the service
 }
 
 func NewMemoryStore() *MemoryStore {
