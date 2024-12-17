@@ -1,0 +1,27 @@
+{{ define "contributing-cause-fields" }}
+<ul>
+    <li>
+        <label>
+            <dfn title="A part of why we had an incident">Contributing cause</dfn>:
+            <select name="contributingCauseID" required>
+                <option>-- select --</option>
+                {{ range $category, $causes := .ContributingCauses }}
+                <optgroup label="{{ $category }}">
+                    {{ range $causes }}
+                    <option value="{{ .ID }}">
+                        {{ .Name }} — {{ .Description }}
+                    </option>
+                    {{ end }}
+                </optgroup>
+                {{ end }}
+            </select>
+        </label>
+    </li>
+    <li>
+        <label>
+            Why this cause applies to this incident:
+            <textarea name="why" required>{{ .ContributingCause.Why }}</textarea>
+        </label>
+    </li>
+</ul>
+{{ end }}

@@ -1,0 +1,14 @@
+<contributing-causes>
+    <form method="post" action="/reviews/{{ .Data.Review.ID }}/contributing-causes" class="new">
+
+        {{ template "contributing-cause-fields" .Data }}
+
+        <button type="submit">Add!</button>
+    </form>
+
+    <ul class="listing">
+        {{ range .Data.Review.ContributingCauses }}
+        <li><span class="contributingCause">{{ .Name }}</span> — <span class="why">{{ .Why }}</span></li>
+        {{ end }}
+    </ul>
+</contributing-causes>

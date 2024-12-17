@@ -88,7 +88,7 @@ func StorageTest(t *testing.T, ctx context.Context, storeFactory func() reviewin
 			require.NoError(t, err)
 
 			elapsed := second.UpdatedAt.Sub(first.UpdatedAt)
-			require.GreaterOrEqual(t, elapsed, time.Nanosecond*10, "expected at least one nanosecond to have passed between both")
+			require.GreaterOrEqual(t, elapsed, time.Nanosecond*10, "expected at least ten nanoseconds to have passed between both")
 		})
 	})
 

@@ -15,26 +15,36 @@ import (
 	"github.com/go-playground/form/v4"
 	"github.com/gosimple/slug"
 
+	"github.com/gaqzi/incident-reviewer/internal/normalized"
 	"github.com/gaqzi/incident-reviewer/internal/reviewing"
 	"github.com/gaqzi/incident-reviewer/internal/reviewing/storage"
 )
 
 var (
-	//go:embed templates/*
+	//go:embed all:templates/*
 	templates embed.FS
 )
 
-type App struct {
-	htmx    *htmx.HTMX
-	decoder *form.Decoder
-	store   reviewing.Storage
+type ReviewingService interface {
+	// CreateContributingCause validates that the cause can be added to the review.
+	AddContributingCause(ctx context.Context, reviewID int64, causeID int64, why string) error
 }
 
-func Handler(store reviewing.Storage) func(chi.Router) {
+type App struct {
+	htmx       *htmx.HTMX
+	decoder    *form.Decoder
+	store      reviewing.Storage // TODO: refactor away usage of the storage and move all its cases into the service
+	causeStore normalized.ContributingCauseStorage
+	service    ReviewingService
+}
+
+func Handler(store reviewing.Storage, service ReviewingService, causeStore normalized.ContributingCauseStorage) func(chi.Router) {
 	app := App{
-		htmx:    htmx.New(),
-		decoder: form.NewDecoder(),
-		store:   store,
+		htmx:       htmx.New(),
+		decoder:    form.NewDecoder(),
+		store:      store,
+		causeStore: causeStore,
+		service:    service,
 	}
 
 	return func(r chi.Router) {
@@ -45,6 +55,8 @@ func Handler(store reviewing.Storage) func(chi.Router) {
 		r.Route("/{id}", func(r chi.Router) {
 			r.Get("/edit", app.Edit)
 			r.Post("/edit", app.Update)
+
+			r.Post("/contributing-causes", app.CreateContributingCause)
 		})
 	}
 }
@@ -65,8 +77,33 @@ type ReviewBasic struct {
 	ReportProximalCause string `form:"reportProximalCause"`
 	ReportTrigger       string `form:"reportTrigger"`
 
+	// Related items that are not changed from the forms but by other calls
+	ContributingCauses []ReviewCauseBasic
+
 	UpdatedAt time.Time
 	CreatedAt time.Time
+}
+
+type ReviewCauseForm struct {
+	ReviewID            int64  `form:"reviewID"`
+	ContributingCauseID int64  `form:"contributingCauseID"`
+	Why                 string `form:"why"`
+
+	UpdatedAt time.Time
+	CreatedAt time.Time
+}
+
+type ReviewCauseBasic struct {
+	Name     string
+	Why      string
+	Category string
+}
+
+type ContributingCauseBasic struct {
+	ID          int64
+	Name        string
+	Description string
+	Category    string
 }
 
 func (a *App) Create(w http.ResponseWriter, r *http.Request) {
@@ -165,13 +202,28 @@ func (a *App) Show(w http.ResponseWriter, r *http.Request) {
 		slog.Error("error finding review", "error", err)
 	}
 
+	contributingCauses, err := a.causeStore.All(r.Context())
+	if err != nil {
+		slog.Info("get all contributing causes error", "error", err)
+		h.WriteHeader(http.StatusInternalServerError)
+		h.JustWriteString(err.Error())
+		return
+	}
+
 	data := map[string]any{
-		"Review": convertToHttpObject(review),
+		"Review":             convertToHttpObject(review),
+		"ContributingCauses": convertContributingCauseToHttpObjects(contributingCauses),
 	}
 
 	page := htmx.NewComponent("templates/show.html").
 		FS(templates).
 		SetData(data).
+		With(
+			htmx.NewComponent("templates/contributing-causes/show.html").
+				FS(templates).
+				Attach("templates/contributing-causes/_fields.html"),
+			"ContributingCauses",
+		).
 		AddTemplateFunction("slug", slug.Make).
 		Wrap(baseContent(), "Body")
 
@@ -276,7 +328,45 @@ func (a *App) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// TODO: HTMX redirect so it doesn't reload the whole page and instead just loads the new content.
 	h.Header().Add("Location", fmt.Sprintf("/reviews/%d-%s", reviewID, slug.Make(inc.Title)))
+	h.WriteHeader(http.StatusSeeOther)
+}
+
+func (a *App) CreateContributingCause(w http.ResponseWriter, r *http.Request) {
+	h := a.htmx.NewHandler(w, r)
+
+	reviewID, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil {
+		slog.Error("failed to parse id for create contributing cause", "id", r.PathValue("id"), "error", err)
+		h.WriteHeader(http.StatusBadRequest)
+		h.JustWriteString("invalid id")
+		return
+	}
+
+	if err := r.ParseForm(); err != nil {
+		slog.Error("failed to parse form", "error", err)
+		h.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	var causeBasic ReviewCauseForm
+	if err := a.decoder.Decode(&causeBasic, r.PostForm); err != nil {
+		slog.Error("failed to decode basic contributing cause form", "error", err)
+		h.WriteHeader(http.StatusBadRequest)
+		h.JustWriteString(err.Error())
+		return
+	}
+
+	if err := a.service.AddContributingCause(r.Context(), reviewID, causeBasic.ContributingCauseID, causeBasic.Why); err != nil {
+		slog.Error("failed to create contributing cause", "reviewID", reviewID, "error", err)
+		h.WriteHeader(http.StatusBadRequest)
+		h.JustWriteString(err.Error())
+		return
+	}
+
+	// TODO: redirect to "show contributing causes" which provides the form and listing, so it doesn't reload everything.
+	h.Header().Add("Location", fmt.Sprintf("/reviews/%d-%s", reviewID, "❓"))
 	h.WriteHeader(http.StatusSeeOther)
 }
 
@@ -295,6 +385,15 @@ func convertToHttpObjects(rs []reviewing.Review) []ReviewBasic {
 }
 
 func convertToHttpObject(r reviewing.Review) ReviewBasic {
+	causes := make([]ReviewCauseBasic, 0, len(r.ContributingCauses))
+	for _, cause := range r.ContributingCauses {
+		causes = append(causes, ReviewCauseBasic{
+			Name:     cause.Cause.Name,
+			Why:      cause.Why,
+			Category: cause.Cause.Category,
+		})
+	}
+
 	return ReviewBasic{
 		ID:                  r.ID,
 		URL:                 r.URL,
@@ -305,8 +404,29 @@ func convertToHttpObject(r reviewing.Review) ReviewBasic {
 		ReportProximalCause: r.ReportProximalCause,
 		ReportTrigger:       r.ReportTrigger,
 
+		ContributingCauses: causes,
+
 		CreatedAt: r.CreatedAt,
 		UpdatedAt: r.UpdatedAt,
+	}
+}
+
+func convertContributingCauseToHttpObjects(ccs []normalized.ContributingCause) map[string][]ContributingCauseBasic {
+	ret := make(map[string][]ContributingCauseBasic)
+
+	for _, cc := range ccs {
+		ret[cc.Category] = append(ret[cc.Category], convertContributingCauseToHttpObject(cc))
+	}
+
+	return ret
+}
+
+func convertContributingCauseToHttpObject(cc normalized.ContributingCause) ContributingCauseBasic {
+	return ContributingCauseBasic{
+		ID:          cc.ID,
+		Name:        cc.Name,
+		Description: cc.Description,
+		Category:    cc.Category,
 	}
 }
 
