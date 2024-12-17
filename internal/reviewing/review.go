@@ -24,6 +24,21 @@ type Review struct {
 	UpdatedAt time.Time
 }
 
+// Update takes the values from the passed in review and sets the fields that are allowed for mass changes.
+// This helper exists to ensure that if we are doing "blind updates" we
+// don't update fields we haven't intended to. Overriding the created time, the ID, and the like.
+func (r Review) Update(o Review) Review {
+	r.URL = o.URL
+	r.Title = o.Title
+	r.Description = o.Description
+	r.Impact = o.Impact
+	r.Where = o.Where
+	r.ReportProximalCause = o.ReportProximalCause
+	r.ReportTrigger = o.ReportTrigger
+
+	return r
+}
+
 type ReviewCause struct {
 	Cause normalized.ContributingCause `validate:"required"`
 	Why   string                       `validate:"required"`
