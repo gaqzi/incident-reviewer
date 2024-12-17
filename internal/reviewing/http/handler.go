@@ -25,7 +25,7 @@ var (
 	templates embed.FS
 )
 
-type ReviewingService interface {
+type reviewingService interface {
 	// Get finds the review or returns NotFoundError.
 	Get(ctx context.Context, id int64) (reviewing.Review, error)
 
@@ -39,14 +39,18 @@ type ReviewingService interface {
 	AddContributingCause(ctx context.Context, reviewID int64, causeID int64, why string) error
 }
 
+type causeAller interface {
+	All(ctx context.Context) ([]normalized.ContributingCause, error)
+}
+
 type App struct {
 	htmx       *htmx.HTMX
 	decoder    *form.Decoder
-	causeStore normalized.ContributingCauseStorage
-	service    ReviewingService
+	causeStore causeAller
+	service    reviewingService
 }
 
-func Handler(service ReviewingService, causeStore normalized.ContributingCauseStorage) func(chi.Router) {
+func Handler(service reviewingService, causeStore causeAller) func(chi.Router) {
 	app := App{
 		htmx:       htmx.New(),
 		decoder:    form.NewDecoder(),
