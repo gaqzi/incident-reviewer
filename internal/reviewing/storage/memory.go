@@ -7,26 +7,23 @@ import (
 	"slices"
 	"time"
 
-	"github.com/go-playground/validator/v10"
-
+	"github.com/gaqzi/incident-reviewer/internal/platform/validate"
 	"github.com/gaqzi/incident-reviewer/internal/reviewing"
 )
 
 type MemoryStore struct {
 	data      map[int64]reviewing.Review
 	currentID int64
-	validate  *validator.Validate // TODO: move validation into the service
 }
 
 func NewMemoryStore() *MemoryStore {
 	return &MemoryStore{
-		data:     make(map[int64]reviewing.Review),
-		validate: validator.New(),
+		data: make(map[int64]reviewing.Review),
 	}
 }
 
-func (s *MemoryStore) Save(_ context.Context, inc reviewing.Review) (reviewing.Review, error) {
-	if err := s.validate.Struct(inc); err != nil {
+func (s *MemoryStore) Save(ctx context.Context, inc reviewing.Review) (reviewing.Review, error) {
+	if err := validate.Struct(ctx, inc); err != nil {
 		return reviewing.Review{}, fmt.Errorf("failed to validate incident: %w", err)
 	}
 

@@ -7,9 +7,8 @@ import (
 	"slices"
 	"time"
 
-	"github.com/go-playground/validator/v10"
-
 	"github.com/gaqzi/incident-reviewer/internal/normalized"
+	"github.com/gaqzi/incident-reviewer/internal/platform/validate"
 )
 
 // TODO: refactor into a generic implementation because the logic is the same across this one and reviewing/storage.MemoryStore.
@@ -17,13 +16,11 @@ import (
 type ContributingCauseMemoryStore struct {
 	data      map[int64]normalized.ContributingCause
 	currentID int64
-	validate  *validator.Validate
 }
 
 func NewContributingCauseMemoryStore() *ContributingCauseMemoryStore {
 	return &ContributingCauseMemoryStore{
-		data:     make(map[int64]normalized.ContributingCause),
-		validate: validator.New(),
+		data: make(map[int64]normalized.ContributingCause),
 	}
 }
 
@@ -36,8 +33,8 @@ func (s *ContributingCauseMemoryStore) Get(_ context.Context, id int64) (normali
 	return cause, nil
 }
 
-func (s *ContributingCauseMemoryStore) Save(_ context.Context, cause normalized.ContributingCause) (normalized.ContributingCause, error) {
-	if err := s.validate.Struct(cause); err != nil {
+func (s *ContributingCauseMemoryStore) Save(ctx context.Context, cause normalized.ContributingCause) (normalized.ContributingCause, error) {
+	if err := validate.Struct(ctx, cause); err != nil {
 		return normalized.ContributingCause{}, fmt.Errorf("failed to validate cause: %w", err)
 	}
 
