@@ -134,9 +134,7 @@ func (a *App) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	review := reviewing.Review{}
-	assignFromHttpObject(inc, &review)
-	rev, err := a.service.Save(r.Context(), review)
+	rev, err := a.service.Save(r.Context(), fromHttpObject(inc))
 	if err != nil {
 		slog.Error("failed to save incident", "error", err)
 		h.WriteHeader(http.StatusInternalServerError)
@@ -328,9 +326,8 @@ func (a *App) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Update all the fields that can change. Note: We don't change CreatedAt
-	assignFromHttpObject(inc, &review)
-
+	// Now update the fetched review and save it
+	review = review.Update(fromHttpObject(inc))
 	_, err = a.service.Save(r.Context(), review)
 	if err != nil {
 		slog.Error("failed to save review", "id", reviewID, "error", err)
@@ -441,13 +438,16 @@ func convertContributingCauseToHttpObject(cc normalized.ContributingCause) Contr
 	}
 }
 
-// assignFromHttpObject takes all values from rb and assigns them to r.
-func assignFromHttpObject(rb ReviewBasic, r *reviewing.Review) {
-	r.URL = rb.URL
-	r.Title = rb.Title
-	r.Description = rb.Description
-	r.Impact = rb.Impact
-	r.Where = rb.Where
-	r.ReportProximalCause = rb.ReportProximalCause
-	r.ReportTrigger = rb.ReportTrigger
+// fromHttpObject takes all values from rb and assigns them to r.
+func fromHttpObject(rb ReviewBasic) reviewing.Review {
+	return reviewing.Review{
+		ID:                  rb.ID,
+		URL:                 rb.URL,
+		Title:               rb.Title,
+		Description:         rb.Description,
+		Impact:              rb.Impact,
+		Where:               rb.Where,
+		ReportProximalCause: rb.ReportProximalCause,
+		ReportTrigger:       rb.ReportTrigger,
+	}
 }

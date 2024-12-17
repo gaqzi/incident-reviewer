@@ -190,3 +190,78 @@ func TestService_AddContributingCause(t *testing.T) {
 		require.NoError(t, actual, "expected to have bound the cause to the review successfully")
 	})
 }
+
+func TestReview_Update(t *testing.T) {
+	t.Run("an update with no changes doesn't modify the object", func(t *testing.T) {
+		orig := reviewing.Review{ID: 1}
+		upd := reviewing.Review{ID: 1}
+
+		actual := orig.Update(upd)
+
+		require.Equal(t, reviewing.Review{ID: 1}, actual, "expected orig to not have changed since all fields are the same")
+	})
+
+	t.Run("an update to an allowed field updates the original object", func(t *testing.T) {
+		orig := reviewing.Review{ID: 1}
+		upd := reviewing.Review{ID: 2, URL: "http://example.com/"}
+
+		actual := orig.Update(upd)
+
+		require.Equal(
+			t,
+			reviewing.Review{ID: 1, URL: "http://example.com/"},
+			actual,
+			"expected to have added the URL into the original object",
+		)
+	})
+
+	for _, tc := range []struct {
+		name     string
+		upd      reviewing.Review
+		expected reviewing.Review
+	}{
+		{
+			"URL",
+			reviewing.Review{URL: "http://example.com/"},
+			reviewing.Review{ID: 1, URL: "http://example.com/"},
+		},
+		{
+			"Title",
+			reviewing.Review{Title: "example"},
+			reviewing.Review{ID: 1, Title: "example"},
+		},
+		{
+			"Description",
+			reviewing.Review{Description: "example"},
+			reviewing.Review{ID: 1, Description: "example"},
+		},
+		{
+			"Impact",
+			reviewing.Review{Impact: "example"},
+			reviewing.Review{ID: 1, Impact: "example"},
+		},
+		{
+			"Where",
+			reviewing.Review{Where: "example"},
+			reviewing.Review{ID: 1, Where: "example"},
+		},
+		{
+			"ReportProximalCause",
+			reviewing.Review{ReportProximalCause: "example"},
+			reviewing.Review{ID: 1, ReportProximalCause: "example"},
+		},
+		{
+			"ReportTrigger: ",
+			reviewing.Review{ReportTrigger: "example"},
+			reviewing.Review{ID: 1, ReportTrigger: "example"},
+		},
+	} {
+		t.Run("updates field: "+tc.name, func(t *testing.T) {
+			orig := reviewing.Review{ID: 1}
+
+			actual := orig.Update(tc.upd)
+
+			require.Equal(t, tc.expected, actual)
+		})
+	}
+}
