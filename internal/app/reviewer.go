@@ -81,10 +81,11 @@ func Start(ctx context.Context, cfg Config) (*Server, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to add default contributing causes: %w", err)
 	}
+	causeService := normalized.NewContributingCauseService(causeStore)
 
 	reviewStore := reviewstorage.NewMemoryStore()
 	reviewService := reviewing.NewService(reviewStore, causeStore)
-	r.Route("/reviews", revhttp.Handler(reviewService, causeStore))
+	r.Route("/reviews", revhttp.Handler(reviewService, causeService))
 
 	go (func() {
 		_ = server.Serve(ln)
