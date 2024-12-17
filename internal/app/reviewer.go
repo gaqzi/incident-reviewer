@@ -12,7 +12,10 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/httplog/v2"
 
+	"github.com/gaqzi/incident-reviewer/internal/normalized"
+	normStore "github.com/gaqzi/incident-reviewer/internal/normalized/storage"
 	httpassets "github.com/gaqzi/incident-reviewer/internal/platform/http"
+	"github.com/gaqzi/incident-reviewer/internal/reviewing"
 	revhttp "github.com/gaqzi/incident-reviewer/internal/reviewing/http"
 	reviewstorage "github.com/gaqzi/incident-reviewer/internal/reviewing/storage"
 )
@@ -68,8 +71,20 @@ func Start(ctx context.Context, cfg Config) (*Server, error) {
 	r.Use(middleware.Recoverer)
 
 	httpassets.PublicAssets(r)
+
+	causeStore := normStore.NewContributingCauseMemoryStore()
+	_, err = causeStore.Save(ctx, normalized.ContributingCause{
+		Name:        "Third party outage",
+		Description: "In case a third party experienced issues/outage and it leads to an incident on our side.\nThings like third party changing configuration and it leading to issues on our side also qualifies",
+		Category:    "Design",
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to add default contributing causes: %w", err)
+	}
+
 	reviewStore := reviewstorage.NewMemoryStore()
-	r.Route("/reviews", revhttp.Handler(reviewStore))
+	reviewService := reviewing.NewService(reviewStore, causeStore)
+	r.Route("/reviews", revhttp.Handler(reviewStore, reviewService, causeStore))
 
 	go (func() {
 		_ = server.Serve(ln)

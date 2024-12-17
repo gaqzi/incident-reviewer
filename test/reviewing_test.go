@@ -3,6 +3,7 @@ package test_test
 import (
 	"context"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -123,6 +124,47 @@ func TestReviewing(t *testing.T) {
 
 		require.Equal(t, createdAt, newCreatedAt, "expected to not have changed the created at when saving")
 		require.NotEqual(t, updatedAt, newUpdatedAt, "expected to have changed the updatedAt when saving")
+
+		// Time to add a normalized contributing cause
+		// TODO: break this test up, it shouldn't be this big, keeping it for now because it means I'd have to refactor into
+		//  nicer and reusable components, which is good, but I just want to keep going right now.
+
+		causesForm := page.Locator(`contributing-causes form.new`)
+		// wow, this is a nasty way to get at the options, but it kinda works, so probably need to find some better way of selecting it when extracting into something reusable.
+		options, err := causesForm.Locator(`[name="contributingCauseID"] option`).All()
+		require.NoError(t, err)
+		var chosenOption string
+		for _, opt := range options {
+			innerTexts, err := opt.AllInnerTexts()
+			require.NoError(t, err)
+			for _, text := range innerTexts {
+				text = strings.TrimSpace(text)
+				if strings.HasPrefix(text, "Third party outage") {
+					// Turns out, selecting by the value (at least when it's this long) breaks in firefox, so select it by the value instead of label.
+					chosenOption, err = opt.GetAttribute("value")
+					require.NoError(t, err, "failed to get value for option")
+					break
+				}
+			}
+		}
+		require.NotEmpty(t, chosenOption, "expected to have found a chosen option")
+		_, err = causesForm.Locator(`[name="contributingCauseID"]`).SelectOption(playwright.SelectOptionValues{Values: &[]string{chosenOption}})
+		require.NoError(t, err, "failed to select the contribution cause")
+		require.NoError(t, causesForm.Locator(`[name="why"]`).
+			Fill("There's literally nothing we could've done since we, like everyone else, rely on core internet infrastructure."))
+		require.NoError(t, causesForm.Locator(`[type="submit"]`).Click())
+
+		causesListing := page.Locator(`contributing-causes ul.listing`)
+		firstCause := causesListing.Locator(`li`)
+		require.NoError(
+			t,
+			assert.Locator(firstCause).ToHaveCount(1),
+			"expected the new listing to be showing up",
+		)
+		require.NoError(t, assert.Locator(firstCause.Locator(".contributingCause")).ToContainText("Third party outage"))
+		require.NoError(t, assert.Locator(firstCause.Locator(".why")).
+			ToContainText("There's literally nothing we could've done since we, like everyone else, rely on core internet infrastructure."))
+		require.NoError(t, assert.Locator(firstCause).Not().ToHaveClass(".proximalCause"), "expected to not have set the proximal cause")
 
 		require.NoError(t, pw.Stop(), "failed to stop playwright")
 	})
