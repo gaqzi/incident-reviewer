@@ -84,7 +84,7 @@ func Start(ctx context.Context, cfg Config) (*Server, error) {
 
 	reviewStore := reviewstorage.NewMemoryStore()
 	reviewService := reviewing.NewService(reviewStore, causeStore)
-	r.Route("/reviews", revhttp.Handler(reviewStore, reviewService, causeStore))
+	r.Route("/reviews", revhttp.Handler(reviewService, causeStore))
 
 	go (func() {
 		_ = server.Serve(ln)

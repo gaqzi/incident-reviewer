@@ -2,21 +2,148 @@ package reviewing_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	"github.com/gaqzi/incident-reviewer/internal/normalized"
-	normStore "github.com/gaqzi/incident-reviewer/internal/normalized/storage"
 	"github.com/gaqzi/incident-reviewer/internal/reviewing"
-	"github.com/gaqzi/incident-reviewer/internal/reviewing/storage"
 )
+
+type storageMock struct {
+	mock.Mock
+}
+
+func (m *storageMock) Save(ctx context.Context, review reviewing.Review) (reviewing.Review, error) {
+	args := m.Called(ctx, review)
+	return args.Get(0).(reviewing.Review), args.Error(1)
+}
+
+func (m *storageMock) Get(ctx context.Context, reviewID int64) (reviewing.Review, error) {
+	args := m.Called(ctx, reviewID)
+	return args.Get(0).(reviewing.Review), args.Error(1)
+}
+
+func (m *storageMock) All(ctx context.Context) ([]reviewing.Review, error) {
+	args := m.Called(ctx)
+	return args.Get(0).([]reviewing.Review), args.Error(1)
+}
+
+type causeStorageMock struct {
+	mock.Mock
+}
+
+func (m *causeStorageMock) Get(ctx context.Context, id int64) (normalized.ContributingCause, error) {
+	args := m.Called(ctx, id)
+	return args.Get(0).(normalized.ContributingCause), args.Error(1)
+}
+
+func TestService_Save(t *testing.T) {
+	t.Run("returns the error from the underlying storage it errors", func(t *testing.T) {
+		store := new(storageMock)
+		store.Test(t)
+		store.On("Save", mock.Anything, reviewing.Review{}).Return(reviewing.Review{}, errors.New("uh-oh"))
+		service := reviewing.NewService(store, nil)
+		ctx := context.Background()
+
+		_, actual := service.Save(ctx, reviewing.Review{})
+
+		require.Error(t, actual, "expected an error since the mock storage always fails")
+		require.ErrorContains(t, actual, "failed to save review in storage:")
+	})
+
+	t.Run("returns the object from save when it saves successfully", func(t *testing.T) {
+		store := new(storageMock)
+		store.Test(t)
+		store.On("Save", mock.Anything, reviewing.Review{}).Return(reviewing.Review{ID: 1}, nil)
+		service := reviewing.NewService(store, nil)
+		ctx := context.Background()
+
+		actual, err := service.Save(ctx, reviewing.Review{})
+		require.NoError(t, err)
+
+		require.Equal(
+			t,
+			reviewing.Review{ID: 1},
+			actual,
+			"expected the returned version from storage to be returned",
+		)
+	})
+}
+
+func TestService_Get(t *testing.T) {
+	t.Run("returns the error from the underlying storage it errors", func(t *testing.T) {
+		store := new(storageMock)
+		store.Test(t)
+		store.On("Get", mock.Anything, int64(1)).Return(reviewing.Review{}, errors.New("uh-oh"))
+		service := reviewing.NewService(store, nil)
+		ctx := context.Background()
+
+		_, actual := service.Get(ctx, 1)
+
+		require.Error(t, actual, "expected an error since we haven't stored any reviews")
+		require.ErrorContainsf(t, actual, "failed to get review:", "so we know we got the correct error")
+	})
+
+	t.Run("returns the object when there is no error", func(t *testing.T) {
+		review := reviewing.Review{
+			ID: 1,
+		}
+		store := new(storageMock)
+		store.Test(t)
+		store.On("Get", mock.Anything, review.ID).Return(review, nil)
+		service := reviewing.NewService(store, nil)
+		ctx := context.Background()
+
+		actual, err := service.Get(ctx, review.ID)
+		require.NoError(t, err)
+
+		require.Equal(
+			t,
+			review,
+			actual,
+			"expected to have gotten back the same item as was originally saved",
+		)
+	})
+}
+
+func TestService_All(t *testing.T) {
+	t.Run("returns the list of reviews when there is no error", func(t *testing.T) {
+		store := new(storageMock)
+		store.Test(t)
+		store.On("All", mock.Anything).Return([]reviewing.Review(nil), nil)
+		service := reviewing.NewService(store, nil)
+		ctx := context.Background()
+
+		actual, err := service.All(ctx)
+
+		require.NoError(t, err)
+		require.Empty(t, actual)
+	})
+
+	t.Run("with an error when fetching all it's wrapped and returned", func(t *testing.T) {
+		store := new(storageMock)
+		store.Test(t)
+		store.On("All", mock.Anything).Return(([]reviewing.Review)(nil), errors.New("uh-oh"))
+		service := reviewing.NewService(store, nil)
+		ctx := context.Background()
+
+		actual, err := service.All(ctx)
+
+		require.Error(t, err)
+		require.ErrorContains(t, err, "failed to get all reviews:")
+		require.Nil(t, actual, "expected an empty slice returned")
+	})
+}
 
 func TestService_AddContributingCause(t *testing.T) {
 	t.Run("when review doesn't exist it returns the error from the storage", func(t *testing.T) {
-		store := storage.NewMemoryStore()
-		causeStore := normStore.NewContributingCauseMemoryStore()
-		service := reviewing.NewService(store, causeStore)
+		store := new(storageMock)
+		store.Test(t)
+		store.On("Get", mock.Anything, int64(1)).Return(reviewing.Review{}, errors.New("uh-oh"))
+		service := reviewing.NewService(store, nil)
 		ctx := context.Background()
 
 		actual := service.AddContributingCause(ctx, 1, 1, "because")
@@ -26,66 +153,40 @@ func TestService_AddContributingCause(t *testing.T) {
 	})
 
 	t.Run("when the contributing cause isn't known return the error from it", func(t *testing.T) {
-		store := storage.NewMemoryStore()
-		causeStore := normStore.NewContributingCauseMemoryStore()
+		store := new(storageMock)
+		store.Test(t)
+		store.On("Get", mock.Anything, int64(1)).Return(reviewing.Review{ID: 1}, nil)
+		causeStore := new(causeStorageMock)
+		causeStore.Test(t)
+		causeStore.On("Get", mock.Anything, int64(1)).Return(normalized.ContributingCause{}, errors.New("uh-oh"))
 		service := reviewing.NewService(store, causeStore)
 		ctx := context.Background()
-		// TODO: need to make some generic heplers for creating these objects, probably under the test package?
-		review, err := store.Save(ctx, reviewing.Review{
-			URL:                 "http://example.com",
-			Title:               "Example",
-			Description:         "Example",
-			Impact:              "Example",
-			Where:               "Example",
-			ReportProximalCause: "Example",
-			ReportTrigger:       "Example",
-		})
-		require.NoError(t, err, "expected to have saved the review successfully")
 
-		actual := service.AddContributingCause(ctx, review.ID, 1, "because!")
+		actual := service.AddContributingCause(ctx, 1, 1, "because!")
 
 		require.Error(t, actual, "expected an error when invalid cause provided")
 		require.ErrorContains(t, actual, "failed to get contributing cause:")
 	})
 
 	t.Run("when both review and contributing cause are known bind it", func(t *testing.T) {
-		store := storage.NewMemoryStore()
-		causeStore := normStore.NewContributingCauseMemoryStore()
+		store := new(storageMock)
+		store.Test(t)
+		store.On("Get", mock.Anything, int64(1)).Return(reviewing.Review{ID: 1}, nil)
+		causeStore := new(causeStorageMock)
+		causeStore.Test(t)
+		causeStore.On("Get", mock.Anything, int64(1)).Return(normalized.ContributingCause{ID: 1}, nil)
+		storedReview := reviewing.Review{
+			ID: 1,
+			ContributingCauses: []reviewing.ReviewCause{{ // make sure we create the ReviewCause correctly and attach it
+				Cause: normalized.ContributingCause{ID: 1},
+				Why:   "because",
+			}},
+		}
+		store.On("Save", mock.Anything, storedReview).Return(storedReview, nil)
 		service := reviewing.NewService(store, causeStore)
 		ctx := context.Background()
-		review, err := store.Save(ctx, reviewing.Review{
-			URL:                 "http://example.com",
-			Title:               "Example",
-			Description:         "Example",
-			Impact:              "Example",
-			Where:               "Example",
-			ReportProximalCause: "Example",
-			ReportTrigger:       "Example",
-		})
-		require.NoError(t, err, "expected to have saved the review successfully")
-		cause, err := causeStore.Save(ctx, normalized.ContributingCause{
-			Name:        "Example",
-			Description: "Example",
-			Category:    "Example",
-		})
-		require.NoError(t, err, "expected the cause to be saved successfully")
 
-		actual := service.AddContributingCause(ctx, review.ID, cause.ID, "because")
+		actual := service.AddContributingCause(ctx, 1, 1, "because")
 		require.NoError(t, actual, "expected to have bound the cause to the review successfully")
-
-		review, err = store.Get(ctx, review.ID)
-		require.NoError(t, err)
-
-		require.Equal(
-			t,
-			[]reviewing.ReviewCause{
-				{
-					Cause: cause,
-					Why:   "because",
-				},
-			},
-			review.ContributingCauses,
-			"expected the cause to have been returned with the review",
-		)
 	})
 }
