@@ -230,6 +230,7 @@ func (a *App) Show(w http.ResponseWriter, r *http.Request) {
 	data := map[string]any{
 		"Review":             convertToHttpObject(review),
 		"ContributingCauses": convertContributingCauseToHttpObjects(contributingCauses),
+		"SelectedCauseID":    r.URL.Query().Get("selectedCause"), // TODO: make a constant between the packages
 	}
 
 	page := htmx.NewComponent("templates/show.html").

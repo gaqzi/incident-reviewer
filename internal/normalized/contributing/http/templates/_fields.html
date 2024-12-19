@@ -1,0 +1,28 @@
+{{ define "contributing-cause-fields" }}
+<ul>
+    <li>
+        <label>
+            Name:
+            <input type="text" name="name" required>
+        </label>
+    </li>
+    <li>
+        <label>
+            Description:
+            <input type="text" name="description" required>
+        </label>
+    </li>
+    <li>
+        <label>
+            Category:
+            <select name="category" required>
+                <option disabled selected>-- select --</option>
+                <option value="Deployment">Deployment</option>
+                <option value="Design">Design</option>
+                <option value="Implementation">Implementation</option>
+                <option value="Testing">Testing</option>
+            </select>
+        </label>
+    </li>
+</ul>
+{{ end }}

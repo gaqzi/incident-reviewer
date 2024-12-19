@@ -13,6 +13,7 @@ import (
 	"github.com/go-chi/httplog/v2"
 
 	"github.com/gaqzi/incident-reviewer/internal/normalized/contributing"
+	causeshttp "github.com/gaqzi/incident-reviewer/internal/normalized/contributing/http"
 	normStore "github.com/gaqzi/incident-reviewer/internal/normalized/contributing/storage"
 	httpassets "github.com/gaqzi/incident-reviewer/internal/platform/http"
 	"github.com/gaqzi/incident-reviewer/internal/reviewing"
@@ -81,6 +82,7 @@ func Start(ctx context.Context, cfg Config) (*Server, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to add default contributing causes: %w", err)
 	}
+	r.Route("/contributing-causes", causeshttp.Handler(causeService))
 
 	reviewStore := reviewstorage.NewMemoryStore()
 	reviewService := reviewing.NewService(reviewStore, causeService)

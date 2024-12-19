@@ -1,9 +1,9 @@
 <contributing-causes>
     <form method="post" action="/reviews/{{ .Data.Review.ID }}/contributing-causes" class="new">
 
-        {{ template "contributing-cause-fields" .Data }}
+        {{ template "bind-contributing-cause-fields" .Data }}
 
-        <button type="submit">Add!</button>
+        <button class="bind" type="submit">Add!</button>
     </form>
 
     <ul class="listing">
