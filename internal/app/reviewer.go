@@ -14,7 +14,7 @@ import (
 
 	"github.com/gaqzi/incident-reviewer/internal/app/web"
 	"github.com/gaqzi/incident-reviewer/internal/normalized/contributing"
-	normStore "github.com/gaqzi/incident-reviewer/internal/normalized/contributing/storage"
+	contribstorage "github.com/gaqzi/incident-reviewer/internal/normalized/contributing/storage"
 	"github.com/gaqzi/incident-reviewer/internal/reviewing"
 	reviewstorage "github.com/gaqzi/incident-reviewer/internal/reviewing/storage"
 )
@@ -71,7 +71,7 @@ func Start(ctx context.Context, cfg Config) (*Server, error) {
 
 	web.PublicAssets(r)
 
-	causeService := contributing.NewCauseService(normStore.NewCauseMemoryStore())
+	causeService := contributing.NewCauseService(contribstorage.NewCauseMemoryStore())
 	cause := contributing.NewCause()
 	cause.Name = "Third party outage"
 	cause.Description = "In case a third party experienced issues/outage and it leads to an incident on our side.\nThings like third party changing configuration and it leading to issues on our side also qualifies"
