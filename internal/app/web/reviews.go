@@ -221,18 +221,12 @@ func (a *reviewsHandler) Show(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data := map[string]any{
-		"Review":             convertToHttpObject(review),
-		"ContributingCauses": convertContributingCauseToHttpObjects(contributingCauses),
-	}
-
+	httpReview := convertToHttpObject(review)
 	page := htmx.NewComponent("templates/reviews/show.html").
 		FS(templates).
-		SetData(data).
+		AddData("Review", httpReview).
 		With(
-			htmx.NewComponent("templates/reviews/_contributing-causes.html").
-				FS(templates).
-				With(bindContributingCause()),
+			contributingCausesComponent(httpReview.ID, contributingCauses, httpReview.ContributingCauses),
 			"ContributingCauses",
 		).
 		Wrap(baseContent(), "Body")
@@ -378,13 +372,6 @@ func (a *reviewsHandler) CreateContributingCause(w http.ResponseWriter, r *http.
 		return
 	}
 
-	contributingCauses, err := a.causeStore.All(r.Context())
-	if err != nil {
-		slog.Error("failed to fetch all contributing causes after binding new cause", "error", err)
-		h.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
 	review, err := a.service.Get(r.Context(), reviewID)
 	if err != nil {
 		slog.Error("failed to fetch the review after binding new cause", "error", err)
@@ -392,13 +379,15 @@ func (a *reviewsHandler) CreateContributingCause(w http.ResponseWriter, r *http.
 		return
 	}
 
-	page := htmx.NewComponent("templates/reviews/_contributing-causes.html").
-		FS(templates).
-		With(bindContributingCause()).
-		SetData(map[string]any{
-			"Review":             convertToHttpObject(review),
-			"ContributingCauses": convertContributingCauseToHttpObjects(contributingCauses),
-		})
+	contributingCauses, err := a.causeStore.All(r.Context())
+	if err != nil {
+		slog.Error("failed to fetch all contributing causes after binding new cause", "error", err)
+		h.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	httpReview := convertToHttpObject(review)
+	page := contributingCausesComponent(httpReview.ID, contributingCauses, httpReview.ContributingCauses)
 
 	_, err = h.Render(r.Context(), page)
 	if err != nil {

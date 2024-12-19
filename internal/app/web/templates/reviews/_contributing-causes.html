@@ -2,7 +2,7 @@
     {{ .Partials.BindContributingCause }}
 
     <ul class="listing">
-        {{ range .Data.Review.ContributingCauses }}
+        {{ range .Data.BoundContributingCauses }}
         <li><span class="contributingCause">{{ .Name }}</span> — <span class="why">{{ .Why }}</span></li>
         {{ end }}
     </ul>

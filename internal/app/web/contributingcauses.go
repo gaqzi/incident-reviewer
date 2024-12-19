@@ -86,13 +86,12 @@ func (a *causesHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	page := htmx.NewComponent("templates/contributing-causes/binding/_only-options.html").
-		FS(templates).
-		Attach("templates/contributing-causes/binding/__causes-options.html").
-		SetData(map[string]any{
-			"SelectedCauseID":    cause.ID.String(),
-			"ContributingCauses": convertContributingCauseToHttpObjects(causes),
-		})
+	page := attachToComponent(
+		htmx.NewComponent("templates/contributing-causes/binding/only-options.html").
+			FS(templates).
+			AddData("SelectedCauseID", cause.ID.String()),
+		bindContributingCausesOptions(causes),
+	)
 
 	_, err = h.Render(r.Context(), page)
 	if err != nil {
