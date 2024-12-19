@@ -1,5 +1,5 @@
 <contributing-causes>
-    {{ template "bind-contributing-cause-form" .Data }}
+    {{ .Partials.BindContributingCause }}
 
     <ul class="listing">
         {{ range .Data.Review.ContributingCauses }}
