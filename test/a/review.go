@@ -32,6 +32,7 @@ func (b BuilderReview) IsInvalid() BuilderReview {
 
 // IsValid prepares a reviewing.Review that will pass validation.
 func (b BuilderReview) IsValid() BuilderReview {
+	b.r.ID = 1
 	b.r.URL = "https://example.com/reviews/1"
 	b.r.Title = "Something"
 	b.r.Description = "At the bottom of the sea"
@@ -45,11 +46,9 @@ func (b BuilderReview) IsValid() BuilderReview {
 
 // IsSaved prepares a reviewing.Review that has previously been saved.
 // This means we've provided valid:
-// - ID
 // - CreatedAt
 // - UpdatedAt
 func (b BuilderReview) IsSaved() BuilderReview {
-	b.r.ID = 1
 	createdAt, err := time.Parse(time.RFC3339Nano, "2024-12-17T18:50:02.1323Z")
 	if err != nil {
 		panic("failed to parse example timestamp: " + err.Error())
@@ -62,9 +61,15 @@ func (b BuilderReview) IsSaved() BuilderReview {
 
 // IsNotSaved prepares a reviewing.Review that has not been saved.
 func (b BuilderReview) IsNotSaved() BuilderReview {
-	b.r.ID = 0
 	b.r.CreatedAt = time.Time{}
 	b.r.UpdatedAt = time.Time{}
+
+	return b
+}
+
+// WithID prepares the reviewing.Review with the passed in id.
+func (b BuilderReview) WithID(id int64) BuilderReview {
+	b.r.ID = id
 
 	return b
 }

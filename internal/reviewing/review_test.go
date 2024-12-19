@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
@@ -82,8 +83,10 @@ func TestService_Save(t *testing.T) {
 
 		_, actual := service.Save(ctx, reviewing.Review{})
 
-		require.Error(t, actual, "expected an empty review to be invalid")
+		var errs validator.ValidationErrors
+		require.ErrorAs(t, actual, &errs, "expected an empty review to be invalid and have the invalid fields returned")
 		require.ErrorContains(t, actual, "failed to validate review:")
+		require.GreaterOrEqual(t, len(errs), 8, "expected at minimum 8 errors to match the fields at the time of writing")
 	})
 
 	t.Run("it calls Review.updateTimestamps() to set the times when saving", func(t *testing.T) {
