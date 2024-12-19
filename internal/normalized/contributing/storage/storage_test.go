@@ -7,29 +7,29 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 
-	"github.com/gaqzi/incident-reviewer/internal/normalized"
-	"github.com/gaqzi/incident-reviewer/internal/normalized/storage"
+	"github.com/gaqzi/incident-reviewer/internal/normalized/contributing"
+	storage2 "github.com/gaqzi/incident-reviewer/internal/normalized/contributing/storage"
 	"github.com/gaqzi/incident-reviewer/test/a"
 )
 
 func TestCauseMemoryStore(t *testing.T) {
-	ContributingCauseStorageTest(t, context.Background(), func() normalized.ContributingCauseStorage {
-		return storage.NewContributingCauseMemoryStore()
+	ContributingCauseStorageTest(t, context.Background(), func() contributing.CauseStorage {
+		return storage2.NewCauseMemoryStore()
 	})
 }
 
-func ContributingCauseStorageTest(t *testing.T, ctx context.Context, storeFactory func() normalized.ContributingCauseStorage) {
+func ContributingCauseStorageTest(t *testing.T, ctx context.Context, storeFactory func() contributing.CauseStorage) {
 	t.Run("Save", func(t *testing.T) {
 		t.Run("returns an error when trying to save without an ID set", func(t *testing.T) {
 			store := storeFactory()
 
-			_, actual := store.Save(ctx, normalized.ContributingCause{})
+			_, actual := store.Save(ctx, contributing.Cause{})
 
-			require.ErrorIs(t, actual, storage.NoIDError, "expected the sentinel error for not having an ID set")
+			require.ErrorIs(t, actual, storage2.NoIDError, "expected the sentinel error for not having an ID set")
 		})
 
 		t.Run("an object with the ID set is saved without errors", func(t *testing.T) {
-			cause := normalized.NewContributingCause()
+			cause := contributing.NewCause()
 			store := storeFactory()
 
 			_, err := store.Save(ctx, cause)
@@ -45,7 +45,7 @@ func ContributingCauseStorageTest(t *testing.T, ctx context.Context, storeFactor
 			_, err := store.Get(ctx, uuid.Nil)
 			require.Error(t, err, "expected to not have found an item when it's not in the store")
 
-			var actualErr *storage.NoContributingCauseError
+			var actualErr *storage2.NoCauseError
 			require.ErrorAs(t, err, &actualErr, "expected the specific error for not found")
 		})
 
@@ -82,7 +82,7 @@ func ContributingCauseStorageTest(t *testing.T, ctx context.Context, storeFactor
 			require.NotEmpty(t, actual)
 			require.Equal(
 				t,
-				[]normalized.ContributingCause{cause},
+				[]contributing.Cause{cause},
 				actual,
 				"expected to have gotten back an item matching the only stored one",
 			)
@@ -100,7 +100,7 @@ func ContributingCauseStorageTest(t *testing.T, ctx context.Context, storeFactor
 
 			require.Equal(
 				t,
-				[]normalized.ContributingCause{
+				[]contributing.Cause{
 					cause2,
 					cause1,
 				},

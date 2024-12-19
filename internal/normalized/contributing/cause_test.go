@@ -1,4 +1,4 @@
-package normalized_test
+package contributing_test
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/gaqzi/incident-reviewer/internal/normalized"
+	"github.com/gaqzi/incident-reviewer/internal/normalized/contributing"
 	"github.com/gaqzi/incident-reviewer/test/a"
 )
 
@@ -18,19 +18,19 @@ type causeStorageMock struct {
 	mock.Mock
 }
 
-func (m *causeStorageMock) Get(ctx context.Context, id uuid.UUID) (normalized.ContributingCause, error) {
+func (m *causeStorageMock) Get(ctx context.Context, id uuid.UUID) (contributing.Cause, error) {
 	args := m.Called(ctx, id)
-	return args.Get(0).(normalized.ContributingCause), args.Error(1)
+	return args.Get(0).(contributing.Cause), args.Error(1)
 }
 
-func (m *causeStorageMock) Save(ctx context.Context, cause normalized.ContributingCause) (normalized.ContributingCause, error) {
+func (m *causeStorageMock) Save(ctx context.Context, cause contributing.Cause) (contributing.Cause, error) {
 	args := m.Called(ctx, cause)
-	return args.Get(0).(normalized.ContributingCause), args.Error(1)
+	return args.Get(0).(contributing.Cause), args.Error(1)
 }
 
-func (m *causeStorageMock) All(ctx context.Context) ([]normalized.ContributingCause, error) {
+func (m *causeStorageMock) All(ctx context.Context) ([]contributing.Cause, error) {
 	args := m.Called(ctx)
-	return args.Get(0).([]normalized.ContributingCause), args.Error(1)
+	return args.Get(0).([]contributing.Cause), args.Error(1)
 }
 
 func TestContributingCauseService_Save(t *testing.T) {
@@ -38,11 +38,11 @@ func TestContributingCauseService_Save(t *testing.T) {
 		storage := new(causeStorageMock)
 		storage.Test(t)
 		storage.
-			On("Save", mock.Anything, mock.MatchedBy(func(c normalized.ContributingCause) bool {
+			On("Save", mock.Anything, mock.MatchedBy(func(c contributing.Cause) bool {
 				return !c.CreatedAt.IsZero() && !c.UpdatedAt.IsZero() && c.CreatedAt.Equal(c.UpdatedAt)
 			})).
-			Return(normalized.ContributingCause{}, nil)
-		service := normalized.NewContributingCauseService(storage)
+			Return(contributing.Cause{}, nil)
+		service := contributing.NewCauseService(storage)
 
 		_, err := service.Save(context.Background(), a.ContributingCause().IsNotSaved().Build())
 
@@ -53,21 +53,21 @@ func TestContributingCauseService_Save(t *testing.T) {
 		storage := new(causeStorageMock)
 		storage.Test(t)
 		storage.
-			On("Save", mock.Anything, mock.MatchedBy(func(c normalized.ContributingCause) bool {
+			On("Save", mock.Anything, mock.MatchedBy(func(c contributing.Cause) bool {
 				return !c.UpdatedAt.IsZero() && c.UpdatedAt.After(c.CreatedAt)
 			})).
-			Return(normalized.ContributingCause{}, nil)
-		service := normalized.NewContributingCauseService(storage)
+			Return(contributing.Cause{}, nil)
+		service := contributing.NewCauseService(storage)
 
 		_, err := service.Save(context.Background(), a.ContributingCause().IsSaved().Build())
 
 		require.NoError(t, err)
 	})
 
-	t.Run("validate the ContributingCause object before saving", func(t *testing.T) {
-		service := normalized.NewContributingCauseService(nil)
+	t.Run("validate the Cause object before saving", func(t *testing.T) {
+		service := contributing.NewCauseService(nil)
 
-		_, actual := service.Save(context.Background(), normalized.ContributingCause{})
+		_, actual := service.Save(context.Background(), contributing.Cause{})
 
 		require.Error(t, actual)
 		require.ErrorContains(t, actual, "failed to validate contributing cause:")
@@ -80,8 +80,8 @@ func TestContributingCauseService_Save(t *testing.T) {
 		storage := new(causeStorageMock)
 		storage.Test(t)
 		storage.On("Save", mock.Anything, mock.Anything).
-			Return(normalized.ContributingCause{}, errors.New("uh-oh"))
-		service := normalized.NewContributingCauseService(storage)
+			Return(contributing.Cause{}, errors.New("uh-oh"))
+		service := contributing.NewCauseService(storage)
 
 		_, err := service.Save(context.Background(), a.ContributingCause().Build())
 
@@ -94,7 +94,7 @@ func TestContributingCauseService_Save(t *testing.T) {
 		storage.Test(t)
 		storage.On("Save", mock.Anything, mock.Anything).
 			Return(a.ContributingCause().Build(), nil)
-		service := normalized.NewContributingCauseService(storage)
+		service := contributing.NewCauseService(storage)
 
 		actual, err := service.Save(context.Background(), a.ContributingCause().IsNotSaved().Build())
 
@@ -107,8 +107,8 @@ func TestContributingCauseService_Get(t *testing.T) {
 	t.Run("wraps any storage error and returns it", func(t *testing.T) {
 		storage := new(causeStorageMock)
 		storage.Test(t)
-		storage.On("Get", mock.Anything, mock.Anything).Return(normalized.ContributingCause{}, errors.New("uh-oh"))
-		service := normalized.NewContributingCauseService(storage)
+		storage.On("Get", mock.Anything, mock.Anything).Return(contributing.Cause{}, errors.New("uh-oh"))
+		service := contributing.NewCauseService(storage)
 
 		_, actual := service.Get(context.Background(), uuid.Nil)
 
@@ -120,7 +120,7 @@ func TestContributingCauseService_Get(t *testing.T) {
 		storage.Test(t)
 		expected := a.ContributingCause().Build()
 		storage.On("Get", mock.Anything, expected.ID).Return(expected, nil)
-		service := normalized.NewContributingCauseService(storage)
+		service := contributing.NewCauseService(storage)
 
 		actual, err := service.Get(context.Background(), expected.ID)
 
@@ -133,9 +133,9 @@ func TestContributingCauseService_All(t *testing.T) {
 	t.Run("returns a wrapped error if one is returned from the storage", func(t *testing.T) {
 		storage := new(causeStorageMock)
 		storage.Test(t)
-		storage.On("All", mock.Anything).Return(([]normalized.ContributingCause)(nil), errors.New("uh-oh"))
+		storage.On("All", mock.Anything).Return(([]contributing.Cause)(nil), errors.New("uh-oh"))
 		ctx := context.Background()
-		service := normalized.NewContributingCauseService(storage)
+		service := contributing.NewCauseService(storage)
 
 		_, actual := service.All(ctx)
 
@@ -146,16 +146,16 @@ func TestContributingCauseService_All(t *testing.T) {
 	t.Run("returns the returned object when no errors", func(t *testing.T) {
 		storage := new(causeStorageMock)
 		storage.Test(t)
-		storage.On("All", mock.Anything).Return([]normalized.ContributingCause{a.ContributingCause().Build()}, nil)
+		storage.On("All", mock.Anything).Return([]contributing.Cause{a.ContributingCause().Build()}, nil)
 		ctx := context.Background()
-		service := normalized.NewContributingCauseService(storage)
+		service := contributing.NewCauseService(storage)
 
 		actual, err := service.All(ctx)
 		require.NoError(t, err)
 
 		require.Equal(
 			t,
-			[]normalized.ContributingCause{a.ContributingCause().Build()},
+			[]contributing.Cause{a.ContributingCause().Build()},
 			actual,
 		)
 	})

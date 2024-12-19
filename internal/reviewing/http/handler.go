@@ -14,7 +14,7 @@ import (
 	"github.com/go-playground/form/v4"
 	"github.com/google/uuid"
 
-	"github.com/gaqzi/incident-reviewer/internal/normalized"
+	"github.com/gaqzi/incident-reviewer/internal/normalized/contributing"
 	"github.com/gaqzi/incident-reviewer/internal/reviewing"
 	"github.com/gaqzi/incident-reviewer/internal/reviewing/storage"
 )
@@ -39,7 +39,7 @@ type reviewingService interface {
 }
 
 type causeAller interface {
-	All(ctx context.Context) ([]normalized.ContributingCause, error)
+	All(ctx context.Context) ([]contributing.Cause, error)
 }
 
 type App struct {
@@ -425,7 +425,7 @@ func convertToHttpObject(r reviewing.Review) ReviewBasic {
 	}
 }
 
-func convertContributingCauseToHttpObjects(ccs []normalized.ContributingCause) map[string][]ContributingCauseBasic {
+func convertContributingCauseToHttpObjects(ccs []contributing.Cause) map[string][]ContributingCauseBasic {
 	ret := make(map[string][]ContributingCauseBasic)
 
 	for _, cc := range ccs {
@@ -435,7 +435,7 @@ func convertContributingCauseToHttpObjects(ccs []normalized.ContributingCause) m
 	return ret
 }
 
-func convertContributingCauseToHttpObject(cc normalized.ContributingCause) ContributingCauseBasic {
+func convertContributingCauseToHttpObject(cc contributing.Cause) ContributingCauseBasic {
 	return ContributingCauseBasic{
 		ID:          cc.ID,
 		Name:        cc.Name,

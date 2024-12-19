@@ -7,7 +7,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/gaqzi/incident-reviewer/internal/normalized"
+	"github.com/gaqzi/incident-reviewer/internal/normalized/contributing"
 	"github.com/gaqzi/incident-reviewer/internal/platform/validate"
 )
 
@@ -62,12 +62,12 @@ func (r Review) updateTimestamps() Review {
 }
 
 type ReviewCause struct {
-	Cause normalized.ContributingCause `validate:"required"`
-	Why   string                       `validate:"required"`
+	Cause contributing.Cause `validate:"required"`
+	Why   string             `validate:"required"`
 }
 
 type causeStore interface {
-	Get(ctx context.Context, id uuid.UUID) (normalized.ContributingCause, error)
+	Get(ctx context.Context, id uuid.UUID) (contributing.Cause, error)
 }
 
 type Service struct {

@@ -12,8 +12,8 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/httplog/v2"
 
-	"github.com/gaqzi/incident-reviewer/internal/normalized"
-	normStore "github.com/gaqzi/incident-reviewer/internal/normalized/storage"
+	"github.com/gaqzi/incident-reviewer/internal/normalized/contributing"
+	normStore "github.com/gaqzi/incident-reviewer/internal/normalized/contributing/storage"
 	httpassets "github.com/gaqzi/incident-reviewer/internal/platform/http"
 	"github.com/gaqzi/incident-reviewer/internal/reviewing"
 	revhttp "github.com/gaqzi/incident-reviewer/internal/reviewing/http"
@@ -72,8 +72,8 @@ func Start(ctx context.Context, cfg Config) (*Server, error) {
 
 	httpassets.PublicAssets(r)
 
-	causeService := normalized.NewContributingCauseService(normStore.NewContributingCauseMemoryStore())
-	cause := normalized.NewContributingCause()
+	causeService := contributing.NewCauseService(normStore.NewCauseMemoryStore())
+	cause := contributing.NewCause()
 	cause.Name = "Third party outage"
 	cause.Description = "In case a third party experienced issues/outage and it leads to an incident on our side.\nThings like third party changing configuration and it leading to issues on our side also qualifies"
 	cause.Category = "Design"
