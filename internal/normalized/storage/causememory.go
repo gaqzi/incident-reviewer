@@ -2,12 +2,10 @@ package storage
 
 import (
 	"context"
-	"fmt"
 	"maps"
 	"slices"
 
 	"github.com/gaqzi/incident-reviewer/internal/normalized"
-	"github.com/gaqzi/incident-reviewer/internal/platform/validate"
 )
 
 // TODO: refactor into a generic implementation because the logic is the same across this one and reviewing/storage.MemoryStore.
@@ -33,10 +31,6 @@ func (s *ContributingCauseMemoryStore) Get(_ context.Context, id int64) (normali
 }
 
 func (s *ContributingCauseMemoryStore) Save(ctx context.Context, cause normalized.ContributingCause) (normalized.ContributingCause, error) {
-	if err := validate.Struct(ctx, cause); err != nil {
-		return normalized.ContributingCause{}, fmt.Errorf("failed to validate cause: %w", err)
-	}
-
 	if cause.ID == 0 {
 		s.currentID++
 		cause.ID = s.currentID

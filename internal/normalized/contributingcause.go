@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"time"
+
+	"github.com/gaqzi/incident-reviewer/internal/platform/validate"
 )
 
 type ContributingCause struct {
@@ -35,6 +37,10 @@ func NewContributingCauseService(store ContributingCauseStorage) *ContributingCa
 }
 
 func (s *ContributingCauseService) Save(ctx context.Context, cc ContributingCause) (ContributingCause, error) {
+	if err := validate.Struct(ctx, cc); err != nil {
+		return cc, fmt.Errorf("failed to validate contributing cause: %w", err)
+	}
+
 	cc = cc.updateTimestamps()
 
 	cc, err := s.store.Save(ctx, cc)
