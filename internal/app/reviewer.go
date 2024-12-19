@@ -74,11 +74,12 @@ func Start(ctx context.Context, cfg Config) (*Server, error) {
 
 	causeStore := normStore.NewContributingCauseMemoryStore()
 	causeService := normalized.NewContributingCauseService(causeStore)
-	_, err = causeService.Save(ctx, normalized.ContributingCause{
-		Name:        "Third party outage",
-		Description: "In case a third party experienced issues/outage and it leads to an incident on our side.\nThings like third party changing configuration and it leading to issues on our side also qualifies",
-		Category:    "Design",
-	})
+
+	cause := normalized.NewContributingCause()
+	cause.Name = "Third party outage"
+	cause.Description = "In case a third party experienced issues/outage and it leads to an incident on our side.\nThings like third party changing configuration and it leading to issues on our side also qualifies"
+	cause.Category = "Design"
+	_, err = causeService.Save(ctx, cause)
 	if err != nil {
 		return nil, fmt.Errorf("failed to add default contributing causes: %w", err)
 	}

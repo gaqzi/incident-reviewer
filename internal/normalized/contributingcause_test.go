@@ -72,7 +72,7 @@ func TestContributingCauseService_Save(t *testing.T) {
 		require.ErrorContains(t, actual, "failed to validate contributing cause:")
 		var errs validator.ValidationErrors
 		require.ErrorAs(t, actual, &errs)
-		require.GreaterOrEqual(t, len(errs), 3, "expected to have at minimum 3 errors for the required fields")
+		require.GreaterOrEqual(t, len(errs), 4, "expected to have at minimum 4 errors for the required fields")
 	})
 
 	t.Run("wraps any error from the store and returns it", func(t *testing.T) {
