@@ -9,7 +9,7 @@ require (
 	github.com/go-playground/form/v4 v4.2.1
 	github.com/go-playground/validator/v10 v10.23.0
 	github.com/go-sqlx/sqlx v1.3.8
-	github.com/gosimple/slug v1.14.0
+	github.com/google/uuid v1.6.0
 	github.com/lib/pq v1.10.9
 	github.com/playwright-community/playwright-go v0.4901.0
 	github.com/pressly/goose/v3 v3.23.1
@@ -45,8 +45,6 @@ require (
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/go-stack/stack v1.8.1 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
-	github.com/google/uuid v1.6.0 // indirect
-	github.com/gosimple/unidecode v1.0.1 // indirect
 	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0 // indirect
 	github.com/klauspost/compress v1.17.7 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
