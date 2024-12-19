@@ -88,7 +88,7 @@ func (a *causesHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	page := htmx.NewComponent("templates/contributing-causes/binding/_only-options.html").
 		FS(templates).
-		Attach("templates/contributing-causes/binding/_causes-options.html").
+		Attach("templates/contributing-causes/binding/__causes-options.html").
 		SetData(map[string]any{
 			"SelectedCauseID":    cause.ID.String(),
 			"ContributingCauses": convertContributingCauseToHttpObjects(causes),
