@@ -17,7 +17,7 @@ func execContext(m dsl.Matcher) {
 	//
 	// TODO: make this matcher handle the above.
 	//
-	// To work on this use ruleguard directly: ruleguard -rules ruleguard/rules-dont-pass-domain-objects-to-templates.go internal/reviewing/http/handler.go
+	// To work on this use ruleguard directly: ruleguard -rules ruleguard/rules-dont-pass-domain-objects-to-templates.go internal/app/website/reviews.go
 	m.Match(`map[string]any{$*_, $key: $val, $*_}`).
 		Where(m["val"].Type.Is(`reviewing.Review`)).
 		Report(`passing reviewing.Review into a template's SetData map. Use: convertToHttpObject($val)`)

@@ -1,8 +1,7 @@
-package http
+package web
 
 import (
 	"context"
-	"embed"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -17,11 +16,6 @@ import (
 	"github.com/gaqzi/incident-reviewer/internal/normalized/contributing"
 	"github.com/gaqzi/incident-reviewer/internal/reviewing"
 	"github.com/gaqzi/incident-reviewer/internal/reviewing/storage"
-)
-
-var (
-	//go:embed all:templates/*
-	templates embed.FS
 )
 
 type reviewingService interface {
@@ -42,15 +36,15 @@ type causeAller interface {
 	All(ctx context.Context) ([]contributing.Cause, error)
 }
 
-type App struct {
+type reviewsHandler struct {
 	htmx       *htmx.HTMX
 	decoder    *form.Decoder
 	causeStore causeAller
 	service    reviewingService
 }
 
-func Handler(service reviewingService, causeStore causeAller) func(chi.Router) {
-	app := App{
+func ReviewsHandler(service reviewingService, causeStore causeAller) func(chi.Router) {
+	app := reviewsHandler{
 		htmx:       htmx.New(),
 		decoder:    form.NewDecoder(),
 		causeStore: causeStore,
@@ -80,7 +74,7 @@ func Handler(service reviewingService, causeStore causeAller) func(chi.Router) {
 	}
 }
 
-func (a *App) Index(w http.ResponseWriter, r *http.Request) {
+func (a *reviewsHandler) Index(w http.ResponseWriter, r *http.Request) {
 	h := a.htmx.NewHandler(w, r)
 
 	a.renderIndex(h, r, map[string]any{})
@@ -125,7 +119,7 @@ type ContributingCauseBasic struct {
 	Category    string
 }
 
-func (a *App) Create(w http.ResponseWriter, r *http.Request) {
+func (a *reviewsHandler) Create(w http.ResponseWriter, r *http.Request) {
 	h := a.htmx.NewHandler(w, r)
 
 	if err := r.ParseForm(); err != nil {
@@ -161,7 +155,7 @@ func (a *App) Create(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (a *App) renderIndex(h *htmx.Handler, r *http.Request, data map[string]any) {
+func (a *reviewsHandler) renderIndex(h *htmx.Handler, r *http.Request, data map[string]any) {
 	if _, ok := data["Report"]; !ok {
 		data["Report"] = map[string]any{}
 	}
@@ -176,13 +170,13 @@ func (a *App) renderIndex(h *htmx.Handler, r *http.Request, data map[string]any)
 		data["Reviews"] = convertToHttpObjects(reviews)
 	}
 
-	page := htmx.NewComponent("templates/index.html").
+	page := htmx.NewComponent("templates/reviews/index.html").
 		FS(templates).
 		SetData(data).
 		With(
-			htmx.NewComponent("templates/_new.html").
+			htmx.NewComponent("templates/reviews/_new.html").
 				FS(templates).
-				Attach("templates/_review-fields.html"),
+				Attach("templates/reviews/_review-fields.html"),
 			"New",
 		).
 		Wrap(baseContent(), "Body")
@@ -195,7 +189,7 @@ func (a *App) renderIndex(h *htmx.Handler, r *http.Request, data map[string]any)
 	}
 }
 
-func (a *App) Show(w http.ResponseWriter, r *http.Request) {
+func (a *reviewsHandler) Show(w http.ResponseWriter, r *http.Request) {
 	h := a.htmx.NewHandler(w, r)
 
 	reviewID, err := uuid.Parse(r.PathValue("id"))
@@ -233,13 +227,13 @@ func (a *App) Show(w http.ResponseWriter, r *http.Request) {
 		"SelectedCauseID":    r.URL.Query().Get("selectedCause"), // TODO: make a constant between the packages
 	}
 
-	page := htmx.NewComponent("templates/show.html").
+	page := htmx.NewComponent("templates/reviews/show.html").
 		FS(templates).
 		SetData(data).
 		With(
-			htmx.NewComponent("templates/contributing-causes/show.html").
+			htmx.NewComponent("templates/reviews/contributing-causes/show.html").
 				FS(templates).
-				Attach("templates/contributing-causes/_fields.html"),
+				Attach("templates/reviews/contributing-causes/_fields.html"),
 			"ContributingCauses",
 		).
 		Wrap(baseContent(), "Body")
@@ -252,7 +246,7 @@ func (a *App) Show(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (a *App) Edit(w http.ResponseWriter, r *http.Request) {
+func (a *reviewsHandler) Edit(w http.ResponseWriter, r *http.Request) {
 	h := a.htmx.NewHandler(w, r)
 
 	reviewID, err := uuid.Parse(r.PathValue("id"))
@@ -280,10 +274,10 @@ func (a *App) Edit(w http.ResponseWriter, r *http.Request) {
 		"Review": convertToHttpObject(review),
 	}
 
-	page := htmx.NewComponent("templates/edit.html").
+	page := htmx.NewComponent("templates/reviews/edit.html").
 		FS(templates).
 		SetData(data).
-		Attach("templates/_review-fields.html").
+		Attach("templates/reviews/_review-fields.html").
 		Wrap(baseContent(), "Body")
 
 	_, err = h.Render(r.Context(), page)
@@ -295,7 +289,7 @@ func (a *App) Edit(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func (a *App) Update(w http.ResponseWriter, r *http.Request) {
+func (a *reviewsHandler) Update(w http.ResponseWriter, r *http.Request) {
 	h := a.htmx.NewHandler(w, r)
 
 	reviewID, err := uuid.Parse(r.PathValue("id"))
@@ -348,7 +342,7 @@ func (a *App) Update(w http.ResponseWriter, r *http.Request) {
 	h.WriteHeader(http.StatusSeeOther)
 }
 
-func (a *App) CreateContributingCause(w http.ResponseWriter, r *http.Request) {
+func (a *reviewsHandler) CreateContributingCause(w http.ResponseWriter, r *http.Request) {
 	h := a.htmx.NewHandler(w, r)
 
 	reviewID, err := uuid.Parse(r.PathValue("id"))
@@ -386,7 +380,7 @@ func (a *App) CreateContributingCause(w http.ResponseWriter, r *http.Request) {
 }
 
 func baseContent() htmx.RenderableComponent {
-	return htmx.NewComponent("templates/base.html").FS(templates)
+	return htmx.NewComponent("templates/reviews/base.html").FS(templates)
 }
 
 func convertToHttpObjects(rs []reviewing.Review) []ReviewBasic {

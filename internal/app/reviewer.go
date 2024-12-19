@@ -12,12 +12,10 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/httplog/v2"
 
+	"github.com/gaqzi/incident-reviewer/internal/app/web"
 	"github.com/gaqzi/incident-reviewer/internal/normalized/contributing"
-	causeshttp "github.com/gaqzi/incident-reviewer/internal/normalized/contributing/http"
 	normStore "github.com/gaqzi/incident-reviewer/internal/normalized/contributing/storage"
-	httpassets "github.com/gaqzi/incident-reviewer/internal/platform/http"
 	"github.com/gaqzi/incident-reviewer/internal/reviewing"
-	revhttp "github.com/gaqzi/incident-reviewer/internal/reviewing/http"
 	reviewstorage "github.com/gaqzi/incident-reviewer/internal/reviewing/storage"
 )
 
@@ -71,7 +69,7 @@ func Start(ctx context.Context, cfg Config) (*Server, error) {
 	r.Use(httplog.RequestLogger(logger))
 	r.Use(middleware.Recoverer)
 
-	httpassets.PublicAssets(r)
+	web.PublicAssets(r)
 
 	causeService := contributing.NewCauseService(normStore.NewCauseMemoryStore())
 	cause := contributing.NewCause()
@@ -82,11 +80,11 @@ func Start(ctx context.Context, cfg Config) (*Server, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to add default contributing causes: %w", err)
 	}
-	r.Route("/contributing-causes", causeshttp.Handler(causeService))
+	r.Route("/contributing-causes", web.ContributingCausesHandler(causeService))
 
 	reviewStore := reviewstorage.NewMemoryStore()
 	reviewService := reviewing.NewService(reviewStore, causeService)
-	r.Route("/reviews", revhttp.Handler(reviewService, causeService))
+	r.Route("/reviews", web.ReviewsHandler(reviewService, causeService))
 
 	go (func() {
 		_ = server.Serve(ln)
