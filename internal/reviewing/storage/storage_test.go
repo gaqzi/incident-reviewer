@@ -2,82 +2,49 @@ package storage_test
 
 import (
 	"context"
-	"errors"
 	"testing"
 	"time"
 
-	"github.com/go-playground/validator/v10"
 	"github.com/stretchr/testify/require"
 
 	"github.com/gaqzi/incident-reviewer/internal/reviewing"
 	"github.com/gaqzi/incident-reviewer/internal/reviewing/storage"
+	"github.com/gaqzi/incident-reviewer/test/a"
 )
+
+func TestMemoryStore(t *testing.T) {
+	StorageTest(t, context.Background(), func() reviewing.Storage { return storage.NewMemoryStore() })
+}
 
 // StorageTest is a base suite used to test across the implementations of reviewing.Storage.
 // It's implemented this way to ensure that the implementations can be used interchangeably, and to allow for the use
 // of lighter implementations during testing.
 func StorageTest(t *testing.T, ctx context.Context, storeFactory func() reviewing.Storage) {
-	validReview := func(modify ...func(r *reviewing.Review)) reviewing.Review {
-		review := reviewing.Review{
-			URL:                 "https://example.com/reviews/1",
-			Title:               "Something",
-			Description:         "At the bottom of the sea",
-			Impact:              "did a bunch of things",
-			Where:               "At land",
-			ReportProximalCause: "Broken",
-			ReportTrigger:       "Special operation",
-		}
-
-		for _, mod := range modify {
-			mod(&review)
-		}
-
-		return review
-	}
-
 	t.Run("Save", func(t *testing.T) {
-		t.Run("an object with all fields set correctly, it saves without an error and a PK is set", func(t *testing.T) {
-			review := validReview()
-			store := storeFactory()
-			actual, err := store.Save(ctx, review)
-
-			require.NoError(t, err, "expected to have saved successfully when all fiels are set correctly")
-			require.NotEmpty(t, actual.ID, "expected the ID to be set to something when saved, is there an error that wasn't covered?")
-			require.NotEmpty(t, actual.CreatedAt, "expected to have set CreatedAt when creating if it was empty")
-			require.NotEmpty(t, actual.UpdatedAt, "expected to have set UpdatedAt when saving")
-			require.Equal(
-				t,
-				reviewing.Review{
-					ID:                  actual.ID,
-					URL:                 review.URL,
-					Title:               review.Title,
-					Description:         review.Description,
-					Impact:              review.Impact,
-					Where:               review.Where,
-					ReportProximalCause: review.ReportProximalCause,
-					ReportTrigger:       review.ReportTrigger,
-					CreatedAt:           actual.CreatedAt,
-					UpdatedAt:           actual.UpdatedAt,
-				},
-				actual,
-				"expected to have saved and set the ID which is used as primary key",
-			)
-		})
-
-		t.Run("with an empty incident object, it fails because the required fields are empty", func(t *testing.T) {
+		t.Run("with an empty incident object, it sets an id, created & updated at, and saves it", func(t *testing.T) {
 			incident := reviewing.Review{}
 			store := storeFactory()
 
-			_, err := store.Save(ctx, incident)
-			require.Error(t, err, "expected errors because the validation isn't valid")
+			actual, err := store.Save(ctx, incident)
+			require.NoError(t, err, "expected to have saved the object")
 
-			var errs validator.ValidationErrors
-			require.True(t, errors.As(err, &errs), "expected to have converted to validator.ValidationErrors")
-			require.GreaterOrEqualf(t, len(errs), 4, "expected at least the 4 fields at the time of writing as failing: %s", errs)
+			require.Equal(
+				t,
+				reviewing.Review{
+					ID:        actual.ID,
+					CreatedAt: actual.CreatedAt,
+					UpdatedAt: actual.UpdatedAt,
+				},
+				actual,
+				"expected to have set the id, created at, and updated at fields on save",
+			)
+			require.NotEmpty(t, actual.ID)
+			require.NotEmpty(t, actual.CreatedAt)
+			require.NotEmpty(t, actual.UpdatedAt)
 		})
 
 		t.Run("when saving an object later it will record a new UpdatedAt", func(t *testing.T) {
-			review := validReview()
+			review := a.Review().IsNotSaved().Build()
 			store := storeFactory()
 			first, err := store.Save(ctx, review)
 			require.NoError(t, err)
@@ -105,7 +72,7 @@ func StorageTest(t *testing.T, ctx context.Context, storeFactory func() reviewin
 
 		t.Run("after saving, gets back the same object as save when asking by ID", func(t *testing.T) {
 			store := storeFactory()
-			expected, err := store.Save(ctx, validReview())
+			expected, err := store.Save(ctx, a.Review().IsNotSaved().Build())
 			require.NoError(t, err, "expected the valid review to have been saved successfully")
 
 			actual, err := store.Get(ctx, expected.ID)
@@ -127,7 +94,7 @@ func StorageTest(t *testing.T, ctx context.Context, storeFactory func() reviewin
 
 		t.Run("returns the only stored item when only one exists", func(t *testing.T) {
 			store := storeFactory()
-			review, err := store.Save(ctx, validReview())
+			review, err := store.Save(ctx, a.Review().IsNotSaved().Build())
 			require.NoError(t, err, "expected to have saved successfully")
 
 			actual, err := store.All(ctx)
@@ -144,12 +111,12 @@ func StorageTest(t *testing.T, ctx context.Context, storeFactory func() reviewin
 
 		t.Run("with multiple reviews, returns them in descending creation order", func(t *testing.T) {
 			store := storeFactory()
-			review1, err := store.Save(ctx, validReview())
+			review1, err := store.Save(ctx, a.Review().IsNotSaved().Build())
 			require.NoError(t, err, "expected to have saved successfully")
-			review2, err := store.Save(ctx, validReview(func(r *reviewing.Review) {
+			review2, err := store.Save(ctx, a.Review().IsNotSaved().Modify(func(r *reviewing.Review) {
 				r.URL = "https://example.com/reviews/2"
 				r.Title = "Another review"
-			}))
+			}).Build())
 			require.NoError(t, err)
 
 			actual, err := store.All(ctx)
