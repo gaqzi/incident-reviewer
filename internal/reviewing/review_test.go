@@ -46,7 +46,7 @@ func TestService_Save(t *testing.T) {
 		store := new(storageMock)
 		store.Test(t)
 		review := a.Review().IsValid().Build()
-		store.On("Save", mock.Anything, review).Return(reviewing.Review{}, errors.New("uh-oh"))
+		store.On("Save", mock.Anything, mock.IsType(reviewing.Review{})).Return(reviewing.Review{}, errors.New("uh-oh"))
 		service := reviewing.NewService(store, nil)
 		ctx := context.Background()
 
@@ -60,7 +60,7 @@ func TestService_Save(t *testing.T) {
 		store := new(storageMock)
 		store.Test(t)
 		store.
-			On("Save", mock.Anything, a.Review().IsNotSaved().Build()).
+			On("Save", mock.Anything, mock.IsType(reviewing.Review{})).
 			Return(a.Review().Build(), nil)
 		service := reviewing.NewService(store, nil)
 		ctx := context.Background()
@@ -76,15 +76,55 @@ func TestService_Save(t *testing.T) {
 		)
 	})
 
-	t.Run("validates", func(t *testing.T) {
-		t.Run("and returns an error when validation fails", func(t *testing.T) {
-			service := reviewing.NewService(nil, nil)
+	t.Run("validates the Review and returns an error when validation fails", func(t *testing.T) {
+		service := reviewing.NewService(nil, nil)
+		ctx := context.Background()
+
+		_, actual := service.Save(ctx, reviewing.Review{})
+
+		require.Error(t, actual, "expected an empty review to be invalid")
+		require.ErrorContains(t, actual, "failed to validate review:")
+	})
+
+	t.Run("it calls Review.updateTimestamps() to set the times when saving", func(t *testing.T) {
+		t.Run("on a new object it sets created at and updated at", func(t *testing.T) {
+			store := new(storageMock)
+			store.Test(t)
+			store.
+				On("Save", mock.Anything, mock.MatchedBy(func(r reviewing.Review) bool {
+					// Ensure that we've set Created and Updated At and that they're the same
+					// The exact values aren't important for our test, just that they've been set.
+					//
+					// XXX: Is this a bad design since I'm testing that some collaboration happened,
+					// but I don't know the full values because it's on the aggregate root? This is
+					// the best I could come up with for now… 😅
+					return !r.CreatedAt.IsZero() && !r.UpdatedAt.IsZero() && r.CreatedAt.Equal(r.UpdatedAt)
+				})).
+				Return(a.Review().Build(), nil)
+			service := reviewing.NewService(store, nil)
 			ctx := context.Background()
 
-			_, actual := service.Save(ctx, reviewing.Review{})
+			actual, err := service.Save(ctx, a.Review().IsNotSaved().Build())
 
-			require.Error(t, actual, "expected an empty review to be invalid")
-			require.ErrorContains(t, actual, "failed to validate review:")
+			require.NoError(t, err)
+			require.Equal(t, a.Review().Build(), actual, "expected to have gotten back the saved object with no further changes")
+		})
+
+		t.Run("on a previously saved object (i.e. CreatedAt set) it only updated UpdatedAt", func(t *testing.T) {
+			store := new(storageMock)
+			store.Test(t)
+			store.
+				On("Save", mock.Anything, mock.MatchedBy(func(r reviewing.Review) bool {
+					// Ensure CreatedAt and UpdatedAt are different
+					return !r.CreatedAt.Equal(r.UpdatedAt)
+				})).
+				Return(a.Review().Build(), nil)
+			service := reviewing.NewService(store, nil)
+			ctx := context.Background()
+
+			_, err := service.Save(ctx, a.Review().IsSaved().Build())
+
+			require.NoError(t, err)
 		})
 	})
 }
@@ -195,7 +235,7 @@ func TestService_AddContributingCause(t *testing.T) {
 			Cause: normalized.ContributingCause{ID: 1},
 			Why:   "because",
 		})
-		store.On("Save", mock.Anything, storedReview).Return(storedReview, nil)
+		store.On("Save", mock.Anything, mock.IsType(reviewing.Review{})).Return(storedReview, nil)
 		service := reviewing.NewService(store, causeStore)
 		ctx := context.Background()
 

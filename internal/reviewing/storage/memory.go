@@ -4,7 +4,6 @@ import (
 	"context"
 	"maps"
 	"slices"
-	"time"
 
 	"github.com/gaqzi/incident-reviewer/internal/reviewing"
 )
@@ -25,12 +24,6 @@ func (s *MemoryStore) Save(_ context.Context, inc reviewing.Review) (reviewing.R
 		s.currentID++
 		inc.ID = s.currentID
 	}
-
-	now := time.Now()
-	if inc.CreatedAt.IsZero() {
-		inc.CreatedAt = now
-	}
-	inc.UpdatedAt = now
 
 	s.data[inc.ID] = inc
 

@@ -3,7 +3,6 @@ package storage_test
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -21,7 +20,7 @@ func TestMemoryStore(t *testing.T) {
 // of lighter implementations during testing.
 func StorageTest(t *testing.T, ctx context.Context, storeFactory func() reviewing.Storage) {
 	t.Run("Save", func(t *testing.T) {
-		t.Run("with an empty incident object, it sets an id, created & updated at, and saves it", func(t *testing.T) {
+		t.Run("with an empty incident object, it sets an id, and saves it", func(t *testing.T) {
 			incident := reviewing.Review{}
 			store := storeFactory()
 
@@ -39,23 +38,8 @@ func StorageTest(t *testing.T, ctx context.Context, storeFactory func() reviewin
 				"expected to have set the id, created at, and updated at fields on save",
 			)
 			require.NotEmpty(t, actual.ID)
-			require.NotEmpty(t, actual.CreatedAt)
-			require.NotEmpty(t, actual.UpdatedAt)
-		})
-
-		t.Run("when saving an object later it will record a new UpdatedAt", func(t *testing.T) {
-			review := a.Review().IsNotSaved().Build()
-			store := storeFactory()
-			first, err := store.Save(ctx, review)
-			require.NoError(t, err)
-
-			// postgres has microsecond resolution, so need to make sure enough time passes.
-			time.Sleep(time.Microsecond)
-			second, err := store.Save(ctx, first)
-			require.NoError(t, err)
-
-			elapsed := second.UpdatedAt.Sub(first.UpdatedAt)
-			require.GreaterOrEqual(t, elapsed, time.Nanosecond*10, "expected at least ten nanoseconds to have passed between both")
+			require.Empty(t, actual.CreatedAt)
+			require.Empty(t, actual.UpdatedAt)
 		})
 	})
 

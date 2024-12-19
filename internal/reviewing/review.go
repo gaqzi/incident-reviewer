@@ -40,6 +40,20 @@ func (r Review) Update(o Review) Review {
 	return r
 }
 
+// updateTimestamps is intended to be used before storing the Review to make tracking changes easier.
+// It's kept private because it'll be called by the service, and I'm curious about this design decision,
+// but it seems like the best way of making it exist while also keeping the service not involved in the logic.
+func (r Review) updateTimestamps() Review {
+	now := time.Now()
+
+	if r.CreatedAt.IsZero() {
+		r.CreatedAt = now
+	}
+	r.UpdatedAt = now
+
+	return r
+}
+
 type ReviewCause struct {
 	Cause normalized.ContributingCause `validate:"required"`
 	Why   string                       `validate:"required"`
@@ -65,6 +79,8 @@ func (s *Service) Save(ctx context.Context, review Review) (Review, error) {
 	if err := validate.Struct(ctx, review); err != nil {
 		return Review{}, fmt.Errorf("failed to validate review: %w", err)
 	}
+
+	review = review.updateTimestamps()
 
 	review, err := s.reviewStore.Save(ctx, review)
 	if err != nil {
