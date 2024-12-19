@@ -5,24 +5,24 @@ import (
 	"maps"
 	"slices"
 
+	"github.com/google/uuid"
+
 	"github.com/gaqzi/incident-reviewer/internal/reviewing"
 )
 
 type MemoryStore struct {
-	data      map[int64]reviewing.Review
-	currentID int64
+	data map[uuid.UUID]reviewing.Review
 }
 
 func NewMemoryStore() *MemoryStore {
 	return &MemoryStore{
-		data: make(map[int64]reviewing.Review),
+		data: make(map[uuid.UUID]reviewing.Review),
 	}
 }
 
 func (s *MemoryStore) Save(_ context.Context, inc reviewing.Review) (reviewing.Review, error) {
-	if inc.ID == 0 {
-		s.currentID++
-		inc.ID = s.currentID
+	if inc.ID == uuid.Nil {
+		return reviewing.Review{}, NoIDError
 	}
 
 	s.data[inc.ID] = inc
@@ -30,7 +30,7 @@ func (s *MemoryStore) Save(_ context.Context, inc reviewing.Review) (reviewing.R
 	return inc, nil
 }
 
-func (s *MemoryStore) Get(_ context.Context, id int64) (reviewing.Review, error) {
+func (s *MemoryStore) Get(_ context.Context, id uuid.UUID) (reviewing.Review, error) {
 	review, ok := s.data[id]
 	if !ok {
 		return reviewing.Review{}, &NoReviewError{ID: id}
@@ -44,7 +44,17 @@ func (s *MemoryStore) All(_ context.Context) ([]reviewing.Review, error) {
 
 	// Sort all the keys for the store, which returns keys in a non-deterministic order,
 	// and the sort order is 1, 2, 3… by the ID, which is monotonically incrementing
-	keys := slices.Sorted(maps.Keys(s.data))
+	keys := slices.SortedFunc(maps.Keys(s.data), func(u uuid.UUID, u2 uuid.UUID) int {
+		t1, t2 := u.Time(), u2.Time()
+		switch {
+		case t1 < t2:
+			return -1
+		case t1 > t2:
+			return 1
+		default:
+			return 0
+		}
+	})
 	// and since I want them returned with most recent first, reverse it after sorting
 	slices.Reverse(keys)
 

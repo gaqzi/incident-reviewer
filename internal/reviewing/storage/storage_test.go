@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 
 	"github.com/gaqzi/incident-reviewer/internal/reviewing"
@@ -20,26 +21,31 @@ func TestMemoryStore(t *testing.T) {
 // of lighter implementations during testing.
 func StorageTest(t *testing.T, ctx context.Context, storeFactory func() reviewing.Storage) {
 	t.Run("Save", func(t *testing.T) {
-		t.Run("with an empty incident object, it sets an id, and saves it", func(t *testing.T) {
+		t.Run("with an empty review object it returns an error because the ID isn't set", func(t *testing.T) {
 			incident := reviewing.Review{}
 			store := storeFactory()
 
-			actual, err := store.Save(ctx, incident)
-			require.NoError(t, err, "expected to have saved the object")
+			_, err := store.Save(ctx, incident)
 
+			require.Error(t, err, "expected to not have saved the object")
+			require.ErrorIs(t, err, storage.NoIDError)
+		})
+
+		t.Run("a review with an ID but nothing else set is stored", func(t *testing.T) {
+			review := reviewing.NewReview()
+			store := storeFactory()
+
+			actual, err := store.Save(ctx, review)
+
+			require.NoError(t, err, "expected to have saved successfully")
 			require.Equal(
 				t,
 				reviewing.Review{
-					ID:        actual.ID,
-					CreatedAt: actual.CreatedAt,
-					UpdatedAt: actual.UpdatedAt,
+					ID: actual.ID,
 				},
 				actual,
-				"expected to have set the id, created at, and updated at fields on save",
+				"expected to not have modified the review and saved it",
 			)
-			require.NotEmpty(t, actual.ID)
-			require.Empty(t, actual.CreatedAt)
-			require.Empty(t, actual.UpdatedAt)
 		})
 	})
 
@@ -47,7 +53,7 @@ func StorageTest(t *testing.T, ctx context.Context, storeFactory func() reviewin
 		t.Run("returns an error when an item with the given PK doesn't exist in the store", func(t *testing.T) {
 			store := storeFactory()
 
-			_, err := store.Get(ctx, 1_000)
+			_, err := store.Get(ctx, uuid.Must(uuid.NewV7()))
 			require.Error(t, err, "expected to not have found an item when it's not in the store")
 
 			var actualErr *storage.NoReviewError
@@ -102,7 +108,7 @@ func StorageTest(t *testing.T, ctx context.Context, storeFactory func() reviewin
 				a.Review().
 					IsNotSaved().
 					Modify(func(r *reviewing.Review) {
-						r.ID = 2
+						r.ID = uuid.Must(uuid.NewV7())
 						r.URL = "https://example.com/reviews/2"
 						r.Title = "Another review"
 					}).Build(),
