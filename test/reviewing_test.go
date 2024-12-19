@@ -139,7 +139,7 @@ func TestReviewing(t *testing.T) {
 		require.NoError(t, err, "failed to select the contribution cause")
 		require.NoError(t, causesForm.Locator(`[name="why"]`).
 			Fill("There's literally nothing we could've done since we, like everyone else, rely on core internet infrastructure."))
-		require.NoError(t, causesForm.Locator(`[type="submit"]`).Click())
+		require.NoError(t, causesForm.Locator(`button.bind[type="submit"]`).Click())
 
 		causesListing := page.Locator(`contributing-causes ul.listing`)
 		firstCause := causesListing.Locator(`li`)
@@ -152,6 +152,27 @@ func TestReviewing(t *testing.T) {
 		require.NoError(t, assert.Locator(firstCause.Locator(".why")).
 			ToContainText("There's literally nothing we could've done since we, like everyone else, rely on core internet infrastructure."))
 		require.NoError(t, assert.Locator(firstCause).Not().ToHaveClass(".proximalCause"), "expected to not have set the proximal cause")
+
+		// Time to suggest another contributing cause, that doesn't exist, and then suggest why it should be added.
+		// but first, let's fill in the why for the new cause first, and make sure it stays around while we add the new cause,
+		// so that we don't lose important information while saving stuff.
+		require.NoError(t, causesForm.Locator(`[name="why"]`).Fill("look, it just fits!"))
+		require.NoError(t, causesForm.Locator(`#causes button[type="submit"]`).Click())
+
+		newCauseForm := causesForm.Locator("#causes form")
+		require.NoError(t, newCauseForm.Locator(`[name="name"]`).Fill("__Inconceivable__"))
+		require.NoError(t, newCauseForm.Locator(`[name="description"]`).Fill("The mind boggles to understand the reason for picking this cause"))
+		_, err = newCauseForm.Locator(`[name="category"]`).SelectOption(playwright.SelectOptionValues{Values: &[]string{"Implementation"}})
+		require.NoError(t, err)
+		require.NoError(t, newCauseForm.Locator(`button[type="submit"]`).Click())
+
+		// Time to add the contributing cause with why that we added before, and see that we have two causes in our list
+		require.NoError(t, causesForm.Locator(`button.bind[type="submit"]`).Click())
+		require.NoError(
+			t,
+			assert.Locator(causesListing.Locator(`li`)).ToHaveCount(2),
+			"expected both of our two bound contributing causes to be shown in the listing",
+		)
 
 		require.NoError(t, pw.Stop(), "failed to stop playwright")
 	})
