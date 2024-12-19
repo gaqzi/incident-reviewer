@@ -5,11 +5,11 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/gaqzi/incident-reviewer/internal/normalized"
+	"github.com/gaqzi/incident-reviewer/internal/normalized/contributing"
 )
 
 type BuilderContributingCause struct {
-	c normalized.ContributingCause
+	c contributing.Cause
 }
 
 func ContributingCause() BuilderContributingCause {
@@ -66,7 +66,7 @@ func (b BuilderContributingCause) WithName(n string) BuilderContributingCause {
 	return b
 }
 
-func (b BuilderContributingCause) Modify(mods ...func(cc *normalized.ContributingCause)) BuilderContributingCause {
+func (b BuilderContributingCause) Modify(mods ...func(cc *contributing.Cause)) BuilderContributingCause {
 	for _, m := range mods {
 		m(&b.c)
 	}
@@ -75,6 +75,6 @@ func (b BuilderContributingCause) Modify(mods ...func(cc *normalized.Contributin
 
 }
 
-func (b BuilderContributingCause) Build() normalized.ContributingCause {
+func (b BuilderContributingCause) Build() contributing.Cause {
 	return b.c
 }

@@ -1,4 +1,4 @@
-package normalized
+package contributing
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 	"github.com/gaqzi/incident-reviewer/internal/platform/validate"
 )
 
-type ContributingCause struct {
+type Cause struct {
 	ID          uuid.UUID `validate:"required"`
 	Name        string    `validate:"required"`
 	Description string    `validate:"required"`
@@ -20,11 +20,11 @@ type ContributingCause struct {
 	UpdatedAt time.Time
 }
 
-func NewContributingCause() ContributingCause {
-	return ContributingCause{ID: uuid.Must(uuid.NewV7())}
+func NewCause() Cause {
+	return Cause{ID: uuid.Must(uuid.NewV7())}
 }
 
-func (cc ContributingCause) updateTimestamps() ContributingCause {
+func (cc Cause) updateTimestamps() Cause {
 	now := time.Now()
 	if cc.CreatedAt.IsZero() {
 		cc.CreatedAt = now
@@ -34,15 +34,15 @@ func (cc ContributingCause) updateTimestamps() ContributingCause {
 	return cc
 }
 
-type ContributingCauseService struct {
-	store ContributingCauseStorage
+type CauseService struct {
+	store CauseStorage
 }
 
-func NewContributingCauseService(store ContributingCauseStorage) *ContributingCauseService {
-	return &ContributingCauseService{store: store}
+func NewCauseService(store CauseStorage) *CauseService {
+	return &CauseService{store: store}
 }
 
-func (s *ContributingCauseService) Save(ctx context.Context, cc ContributingCause) (ContributingCause, error) {
+func (s *CauseService) Save(ctx context.Context, cc Cause) (Cause, error) {
 	if err := validate.Struct(ctx, cc); err != nil {
 		return cc, fmt.Errorf("failed to validate contributing cause: %w", err)
 	}
@@ -57,7 +57,7 @@ func (s *ContributingCauseService) Save(ctx context.Context, cc ContributingCaus
 	return cc, nil
 }
 
-func (s *ContributingCauseService) All(ctx context.Context) ([]ContributingCause, error) {
+func (s *CauseService) All(ctx context.Context) ([]Cause, error) {
 	ret, err := s.store.All(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get all contributing causes from storage: %w", err)
@@ -66,10 +66,10 @@ func (s *ContributingCauseService) All(ctx context.Context) ([]ContributingCause
 	return ret, nil
 }
 
-func (s *ContributingCauseService) Get(ctx context.Context, id uuid.UUID) (ContributingCause, error) {
+func (s *CauseService) Get(ctx context.Context, id uuid.UUID) (Cause, error) {
 	cc, err := s.store.Get(ctx, id)
 	if err != nil {
-		return ContributingCause{}, fmt.Errorf("failed to get contributing cause: %w", err)
+		return Cause{}, fmt.Errorf("failed to get contributing cause: %w", err)
 	}
 
 	return cc, nil

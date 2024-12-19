@@ -7,11 +7,11 @@ import (
 	"github.com/google/uuid"
 )
 
-type NoContributingCauseError struct {
+type NoCauseError struct {
 	ID uuid.UUID
 }
 
-func (e *NoContributingCauseError) Error() string {
+func (e *NoCauseError) Error() string {
 	return fmt.Sprintf("contributing cause not found by id: %d", e.ID)
 }
 

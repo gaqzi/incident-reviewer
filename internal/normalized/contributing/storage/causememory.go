@@ -7,33 +7,33 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/gaqzi/incident-reviewer/internal/normalized"
+	"github.com/gaqzi/incident-reviewer/internal/normalized/contributing"
 )
 
 // TODO: refactor into a generic implementation because the logic is the same across this one and reviewing/storage.MemoryStore.
 
-type ContributingCauseMemoryStore struct {
-	data map[uuid.UUID]normalized.ContributingCause
+type CauseMemoryStore struct {
+	data map[uuid.UUID]contributing.Cause
 }
 
-func NewContributingCauseMemoryStore() *ContributingCauseMemoryStore {
-	return &ContributingCauseMemoryStore{
-		data: make(map[uuid.UUID]normalized.ContributingCause),
+func NewCauseMemoryStore() *CauseMemoryStore {
+	return &CauseMemoryStore{
+		data: make(map[uuid.UUID]contributing.Cause),
 	}
 }
 
-func (s *ContributingCauseMemoryStore) Get(_ context.Context, id uuid.UUID) (normalized.ContributingCause, error) {
+func (s *CauseMemoryStore) Get(_ context.Context, id uuid.UUID) (contributing.Cause, error) {
 	cause, ok := s.data[id]
 	if !ok {
-		return normalized.ContributingCause{}, &NoContributingCauseError{ID: id}
+		return contributing.Cause{}, &NoCauseError{ID: id}
 	}
 
 	return cause, nil
 }
 
-func (s *ContributingCauseMemoryStore) Save(_ context.Context, cause normalized.ContributingCause) (normalized.ContributingCause, error) {
+func (s *CauseMemoryStore) Save(_ context.Context, cause contributing.Cause) (contributing.Cause, error) {
 	if cause.ID == uuid.Nil {
-		return normalized.ContributingCause{}, NoIDError
+		return contributing.Cause{}, NoIDError
 	}
 
 	s.data[cause.ID] = cause
@@ -41,8 +41,8 @@ func (s *ContributingCauseMemoryStore) Save(_ context.Context, cause normalized.
 	return cause, nil
 }
 
-func (s *ContributingCauseMemoryStore) All(_ context.Context) ([]normalized.ContributingCause, error) {
-	ret := make([]normalized.ContributingCause, 0, len(s.data))
+func (s *CauseMemoryStore) All(_ context.Context) ([]contributing.Cause, error) {
+	ret := make([]contributing.Cause, 0, len(s.data))
 
 	// Sort all the keys for the store, which returns keys in a non-deterministic order,
 	// and the sort order is 1, 2, 3… by the ID, which is monotonically incrementing

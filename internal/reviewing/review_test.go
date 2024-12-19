@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/gaqzi/incident-reviewer/internal/normalized"
+	"github.com/gaqzi/incident-reviewer/internal/normalized/contributing"
 	"github.com/gaqzi/incident-reviewer/internal/reviewing"
 	"github.com/gaqzi/incident-reviewer/test/a"
 )
@@ -38,9 +38,9 @@ type causeStorageMock struct {
 	mock.Mock
 }
 
-func (m *causeStorageMock) Get(ctx context.Context, id uuid.UUID) (normalized.ContributingCause, error) {
+func (m *causeStorageMock) Get(ctx context.Context, id uuid.UUID) (contributing.Cause, error) {
 	args := m.Called(ctx, id)
-	return args.Get(0).(normalized.ContributingCause), args.Error(1)
+	return args.Get(0).(contributing.Cause), args.Error(1)
 }
 
 func TestService_Save(t *testing.T) {
@@ -219,7 +219,7 @@ func TestService_AddContributingCause(t *testing.T) {
 		store.On("Get", mock.Anything, id).Return(reviewing.Review{ID: id}, nil)
 		causeStore := new(causeStorageMock)
 		causeStore.Test(t)
-		causeStore.On("Get", mock.Anything, uuid.Nil).Return(normalized.ContributingCause{}, errors.New("uh-oh"))
+		causeStore.On("Get", mock.Anything, uuid.Nil).Return(contributing.Cause{}, errors.New("uh-oh"))
 		service := reviewing.NewService(store, causeStore)
 		ctx := context.Background()
 
