@@ -1,10 +1,5 @@
 <contributing-causes>
-    <form method="post" action="/reviews/{{ .Data.Review.ID }}/contributing-causes" class="new">
-
-        {{ template "bind-contributing-cause-fields" .Data }}
-
-        <button class="bind" type="submit">Add!</button>
-    </form>
+    {{ template "bind-contributing-cause-form" .Data }}
 
     <ul class="listing">
         {{ range .Data.Review.ContributingCauses }}
