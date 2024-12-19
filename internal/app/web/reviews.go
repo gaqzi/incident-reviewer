@@ -231,9 +231,10 @@ func (a *reviewsHandler) Show(w http.ResponseWriter, r *http.Request) {
 		FS(templates).
 		SetData(data).
 		With(
-			htmx.NewComponent("templates/reviews/contributing-causes/show.html").
+			htmx.NewComponent("templates/reviews/_contributing-causes.html").
 				FS(templates).
-				Attach("templates/reviews/contributing-causes/_fields.html"),
+				Attach("templates/contributing-causes/binding/_fields.html").
+				Attach("templates/contributing-causes/binding/_form.html"),
 			"ContributingCauses",
 		).
 		Wrap(baseContent(), "Body")

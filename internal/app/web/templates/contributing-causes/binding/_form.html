@@ -1,0 +1,8 @@
+{{ define "bind-contributing-cause-form" }}
+<form method="post" action="/reviews/{{ .Review.ID }}/contributing-causes" class="new">
+
+    {{ template "bind-contributing-cause-fields" . }}
+
+    <button class="bind" type="submit">Add!</button>
+</form>
+{{ end }}
