@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
@@ -60,6 +61,18 @@ func TestContributingCauseService_Save(t *testing.T) {
 		_, err := service.Save(context.Background(), a.ContributingCause().IsSaved().Build())
 
 		require.NoError(t, err)
+	})
+
+	t.Run("validate the ContributingCause object before saving", func(t *testing.T) {
+		service := normalized.NewContributingCauseService(nil)
+
+		_, actual := service.Save(context.Background(), normalized.ContributingCause{})
+
+		require.Error(t, actual)
+		require.ErrorContains(t, actual, "failed to validate contributing cause:")
+		var errs validator.ValidationErrors
+		require.ErrorAs(t, actual, &errs)
+		require.GreaterOrEqual(t, len(errs), 3, "expected to have at minimum 3 errors for the required fields")
 	})
 
 	t.Run("wraps any error from the store and returns it", func(t *testing.T) {
