@@ -3,6 +3,8 @@ package a
 import (
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/gaqzi/incident-reviewer/internal/normalized"
 )
 
@@ -17,7 +19,7 @@ func ContributingCause() BuilderContributingCause {
 }
 
 func (b BuilderContributingCause) IsValid() BuilderContributingCause {
-	b.c.ID = 1
+	b.c.ID = uuid.MustParse("0193ddee-c2e6-72d6-ad36-9d4cee8a5e2f") // UUIDv7, just a value, no particular meaning
 	b.c.Name = "Third Party Outage"
 	b.c.Description = "When things go wrong for others"
 	b.c.Category = "Design" // because we can mitigate these by designing differently, mostly
@@ -39,7 +41,6 @@ func (b BuilderContributingCause) IsSaved() BuilderContributingCause {
 		panic("failed to parse example timestamp: " + err.Error())
 	}
 
-	b.c.ID = 1
 	b.c.CreatedAt = createdAt
 	b.c.UpdatedAt = createdAt
 
@@ -53,7 +54,7 @@ func (b BuilderContributingCause) IsNotSaved() BuilderContributingCause {
 	return b
 }
 
-func (b BuilderContributingCause) WithID(id int64) BuilderContributingCause {
+func (b BuilderContributingCause) WithID(id uuid.UUID) BuilderContributingCause {
 	b.c.ID = id
 
 	return b

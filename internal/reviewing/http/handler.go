@@ -35,7 +35,7 @@ type reviewingService interface {
 	All(ctx context.Context) ([]reviewing.Review, error)
 
 	// AddContributingCause validates that the cause can be added to the review.
-	AddContributingCause(ctx context.Context, reviewID uuid.UUID, causeID int64, why string) error
+	AddContributingCause(ctx context.Context, reviewID uuid.UUID, causeID uuid.UUID, why string) error
 }
 
 type causeAller interface {
@@ -105,7 +105,7 @@ type ReviewBasic struct {
 
 type ReviewCauseForm struct {
 	ReviewID            uuid.UUID `form:"reviewID"`
-	ContributingCauseID int64     `form:"contributingCauseID"`
+	ContributingCauseID uuid.UUID `form:"contributingCauseID"`
 	Why                 string    `form:"why"`
 
 	UpdatedAt time.Time
@@ -119,7 +119,7 @@ type ReviewCauseBasic struct {
 }
 
 type ContributingCauseBasic struct {
-	ID          int64
+	ID          uuid.UUID
 	Name        string
 	Description string
 	Category    string

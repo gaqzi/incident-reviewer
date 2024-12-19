@@ -3,10 +3,12 @@ package storage
 import (
 	"errors"
 	"fmt"
+
+	"github.com/google/uuid"
 )
 
 type NoContributingCauseError struct {
-	ID int64
+	ID uuid.UUID
 }
 
 func (e *NoContributingCauseError) Error() string {
