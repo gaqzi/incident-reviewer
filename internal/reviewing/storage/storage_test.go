@@ -97,10 +97,16 @@ func StorageTest(t *testing.T, ctx context.Context, storeFactory func() reviewin
 			store := storeFactory()
 			review1, err := store.Save(ctx, a.Review().IsNotSaved().Build())
 			require.NoError(t, err, "expected to have saved successfully")
-			review2, err := store.Save(ctx, a.Review().IsNotSaved().Modify(func(r *reviewing.Review) {
-				r.URL = "https://example.com/reviews/2"
-				r.Title = "Another review"
-			}).Build())
+			review2, err := store.Save(
+				ctx,
+				a.Review().
+					IsNotSaved().
+					Modify(func(r *reviewing.Review) {
+						r.ID = 2
+						r.URL = "https://example.com/reviews/2"
+						r.Title = "Another review"
+					}).Build(),
+			)
 			require.NoError(t, err)
 
 			actual, err := store.All(ctx)

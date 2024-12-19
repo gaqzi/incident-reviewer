@@ -134,7 +134,8 @@ func (a *App) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rev, err := a.service.Save(r.Context(), fromHttpObject(inc))
+	rev := fromHttpObject(inc)
+	rev, err := a.service.Save(r.Context(), rev)
 	if err != nil {
 		slog.Error("failed to save incident", "error", err)
 		h.WriteHeader(http.StatusInternalServerError)
@@ -438,16 +439,16 @@ func convertContributingCauseToHttpObject(cc normalized.ContributingCause) Contr
 	}
 }
 
-// fromHttpObject takes all values from rb and assigns them to r.
+// fromHttpObject takes all values from rb and assigns them to a new reviewing.Review.
 func fromHttpObject(rb ReviewBasic) reviewing.Review {
-	return reviewing.Review{
-		ID:                  rb.ID,
-		URL:                 rb.URL,
-		Title:               rb.Title,
-		Description:         rb.Description,
-		Impact:              rb.Impact,
-		Where:               rb.Where,
-		ReportProximalCause: rb.ReportProximalCause,
-		ReportTrigger:       rb.ReportTrigger,
-	}
+	return reviewing.NewReview().
+		Update(reviewing.Review{
+			URL:                 rb.URL,
+			Title:               rb.Title,
+			Description:         rb.Description,
+			Impact:              rb.Impact,
+			Where:               rb.Where,
+			ReportProximalCause: rb.ReportProximalCause,
+			ReportTrigger:       rb.ReportTrigger,
+		})
 }

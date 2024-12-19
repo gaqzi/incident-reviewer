@@ -10,7 +10,7 @@ import (
 )
 
 type Review struct {
-	ID                  int64
+	ID                  int64  `validate:"required"`
 	URL                 string `validate:"required,http_url"`
 	Title               string `validate:"required"`
 	Description         string `validate:"required"`
@@ -23,6 +23,11 @@ type Review struct {
 
 	CreatedAt time.Time
 	UpdatedAt time.Time
+}
+
+// NewReview returns a reviewing.Review with a valid ID set.
+func NewReview() Review {
+	return Review{ID: 1} // TODO: migrate to UUID
 }
 
 // Update takes the values from the passed in review and sets the fields that are allowed for mass changes.
