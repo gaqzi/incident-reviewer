@@ -11,8 +11,7 @@ import (
 // TODO: refactor into a generic implementation because the logic is the same across this one and reviewing/storage.MemoryStore.
 
 type ContributingCauseMemoryStore struct {
-	data      map[int64]normalized.ContributingCause
-	currentID int64
+	data map[int64]normalized.ContributingCause
 }
 
 func NewContributingCauseMemoryStore() *ContributingCauseMemoryStore {
@@ -30,10 +29,9 @@ func (s *ContributingCauseMemoryStore) Get(_ context.Context, id int64) (normali
 	return cause, nil
 }
 
-func (s *ContributingCauseMemoryStore) Save(ctx context.Context, cause normalized.ContributingCause) (normalized.ContributingCause, error) {
+func (s *ContributingCauseMemoryStore) Save(_ context.Context, cause normalized.ContributingCause) (normalized.ContributingCause, error) {
 	if cause.ID == 0 {
-		s.currentID++
-		cause.ID = s.currentID
+		return normalized.ContributingCause{}, NoIDError
 	}
 
 	s.data[cause.ID] = cause

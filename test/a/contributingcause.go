@@ -17,6 +17,7 @@ func ContributingCause() BuilderContributingCause {
 }
 
 func (b BuilderContributingCause) IsValid() BuilderContributingCause {
+	b.c.ID = 1
 	b.c.Name = "Third Party Outage"
 	b.c.Description = "When things go wrong for others"
 	b.c.Category = "Design" // because we can mitigate these by designing differently, mostly
@@ -46,7 +47,6 @@ func (b BuilderContributingCause) IsSaved() BuilderContributingCause {
 }
 
 func (b BuilderContributingCause) IsNotSaved() BuilderContributingCause {
-	b.c.ID = 0
 	b.c.CreatedAt = time.Time{}
 	b.c.UpdatedAt = time.Time{}
 

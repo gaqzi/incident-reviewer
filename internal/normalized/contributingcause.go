@@ -9,13 +9,17 @@ import (
 )
 
 type ContributingCause struct {
-	ID          int64
+	ID          int64  `validate:"required"`
 	Name        string `validate:"required"`
 	Description string `validate:"required"`
 	Category    string `validate:"required"`
 
 	CreatedAt time.Time
 	UpdatedAt time.Time
+}
+
+func NewContributingCause() ContributingCause {
+	return ContributingCause{ID: 1} // TODO: Make UUID
 }
 
 func (cc ContributingCause) updateTimestamps() ContributingCause {

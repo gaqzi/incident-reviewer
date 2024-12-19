@@ -19,25 +19,21 @@ func TestCauseMemoryStore(t *testing.T) {
 
 func ContributingCauseStorageTest(t *testing.T, ctx context.Context, storeFactory func() normalized.ContributingCauseStorage) {
 	t.Run("Save", func(t *testing.T) {
-		t.Run("an object with all fields set correctly, it saves without an error and a PK is set", func(t *testing.T) {
-			cause := a.ContributingCause().IsNotSaved().Build()
+		t.Run("returns an error when trying to save without an ID set", func(t *testing.T) {
 			store := storeFactory()
 
-			actual, err := store.Save(ctx, cause)
+			_, actual := store.Save(ctx, normalized.ContributingCause{})
+
+			require.ErrorIs(t, actual, storage.NoIDError, "expected the sentinel error for not having an ID set")
+		})
+
+		t.Run("an object with the ID set is saved without errors", func(t *testing.T) {
+			cause := normalized.NewContributingCause()
+			store := storeFactory()
+
+			_, err := store.Save(ctx, cause)
 
 			require.NoError(t, err, "expected to have saved when all fields are set")
-			require.NotEmpty(t, actual.ID, "expected the ID to be set to something when saved, is there an error that wasn't covered?")
-			require.Equal(
-				t,
-				normalized.ContributingCause{
-					ID:          actual.ID,
-					Name:        cause.Name,
-					Description: cause.Description,
-					Category:    cause.Category,
-				},
-				actual,
-				"expected to have saved the values as passed in, and set the generated or automatic values",
-			)
 		})
 	})
 
