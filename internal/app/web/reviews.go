@@ -224,7 +224,6 @@ func (a *reviewsHandler) Show(w http.ResponseWriter, r *http.Request) {
 	data := map[string]any{
 		"Review":             convertToHttpObject(review),
 		"ContributingCauses": convertContributingCauseToHttpObjects(contributingCauses),
-		"SelectedCauseID":    r.URL.Query().Get("selectedCause"), // TODO: make a constant between the packages
 	}
 
 	page := htmx.NewComponent("templates/reviews/show.html").
@@ -345,6 +344,11 @@ func (a *reviewsHandler) Update(w http.ResponseWriter, r *http.Request) {
 func (a *reviewsHandler) CreateContributingCause(w http.ResponseWriter, r *http.Request) {
 	h := a.htmx.NewHandler(w, r)
 
+	if !h.IsHxRequest() {
+		h.WriteHeader(http.StatusNotFound)
+		h.JustWriteString("not yet supported")
+	}
+
 	reviewID, err := uuid.Parse(r.PathValue("id"))
 	if err != nil {
 		slog.Error("failed to parse id for create contributing cause", "id", r.PathValue("id"), "error", err)
@@ -374,9 +378,34 @@ func (a *reviewsHandler) CreateContributingCause(w http.ResponseWriter, r *http.
 		return
 	}
 
-	// TODO: redirect to "show contributing causes" which provides the form and listing, so it doesn't reload everything.
-	h.Header().Add("Location", "/reviews/"+reviewID.String())
-	h.WriteHeader(http.StatusSeeOther)
+	contributingCauses, err := a.causeStore.All(r.Context())
+	if err != nil {
+		slog.Error("failed to fetch all contributing causes after binding new cause", "error", err)
+		h.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	review, err := a.service.Get(r.Context(), reviewID)
+	if err != nil {
+		slog.Error("failed to fetch the review after binding new cause", "error", err)
+		h.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	page := htmx.NewComponent("templates/reviews/_contributing-causes.html").
+		FS(templates).
+		With(bindContributingCause()).
+		SetData(map[string]any{
+			"Review":             convertToHttpObject(review),
+			"ContributingCauses": convertContributingCauseToHttpObjects(contributingCauses),
+		})
+
+	_, err = h.Render(r.Context(), page)
+	if err != nil {
+		slog.Error("failed to render contributing-causes after binding new cause", "error", err)
+		h.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 }
 
 func baseContent() htmx.RenderableComponent {
