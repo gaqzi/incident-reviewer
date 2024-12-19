@@ -7,13 +7,12 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/donseba/go-htmx"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/form/v4"
-	"github.com/gosimple/slug"
+	"github.com/google/uuid"
 
 	"github.com/gaqzi/incident-reviewer/internal/normalized"
 	"github.com/gaqzi/incident-reviewer/internal/reviewing"
@@ -27,7 +26,7 @@ var (
 
 type reviewingService interface {
 	// Get finds the review or returns NotFoundError.
-	Get(ctx context.Context, id int64) (reviewing.Review, error)
+	Get(ctx context.Context, id uuid.UUID) (reviewing.Review, error)
 
 	// Save validates and stores a review.
 	Save(ctx context.Context, review reviewing.Review) (reviewing.Review, error)
@@ -36,7 +35,7 @@ type reviewingService interface {
 	All(ctx context.Context) ([]reviewing.Review, error)
 
 	// AddContributingCause validates that the cause can be added to the review.
-	AddContributingCause(ctx context.Context, reviewID int64, causeID int64, why string) error
+	AddContributingCause(ctx context.Context, reviewID uuid.UUID, causeID int64, why string) error
 }
 
 type causeAller interface {
@@ -58,12 +57,21 @@ func Handler(service reviewingService, causeStore causeAller) func(chi.Router) {
 		service:    service,
 	}
 
+	// Handle UUIDs transparently in the forms.
+	app.decoder.RegisterCustomTypeFunc(func(vals []string) (interface{}, error) {
+		if len(vals) == 0 {
+			return uuid.Nil, nil
+		}
+
+		return uuid.Parse(vals[0])
+	}, uuid.UUID{})
+
 	return func(r chi.Router) {
 		r.Get("/", app.Index)
 		r.Post("/", app.Create)
-		r.Get("/{id}-{slug}", app.Show)
 
 		r.Route("/{id}", func(r chi.Router) {
+			r.Get("/", app.Show)
 			r.Get("/edit", app.Edit)
 			r.Post("/edit", app.Update)
 
@@ -79,14 +87,14 @@ func (a *App) Index(w http.ResponseWriter, r *http.Request) {
 }
 
 type ReviewBasic struct {
-	ID                  int64  `form:"id"`
-	URL                 string `form:"url"`
-	Title               string `form:"title"`
-	Description         string `form:"description"`
-	Impact              string `form:"impact"`
-	Where               string `form:"where"`
-	ReportProximalCause string `form:"reportProximalCause"`
-	ReportTrigger       string `form:"reportTrigger"`
+	ID                  uuid.UUID `form:"id"`
+	URL                 string    `form:"url"`
+	Title               string    `form:"title"`
+	Description         string    `form:"description"`
+	Impact              string    `form:"impact"`
+	Where               string    `form:"where"`
+	ReportProximalCause string    `form:"reportProximalCause"`
+	ReportTrigger       string    `form:"reportTrigger"`
 
 	// Related items that are not changed from the forms but by other calls
 	ContributingCauses []ReviewCauseBasic
@@ -96,9 +104,9 @@ type ReviewBasic struct {
 }
 
 type ReviewCauseForm struct {
-	ReviewID            int64  `form:"reviewID"`
-	ContributingCauseID int64  `form:"contributingCauseID"`
-	Why                 string `form:"why"`
+	ReviewID            uuid.UUID `form:"reviewID"`
+	ContributingCauseID int64     `form:"contributingCauseID"`
+	Why                 string    `form:"why"`
 
 	UpdatedAt time.Time
 	CreatedAt time.Time
@@ -171,7 +179,6 @@ func (a *App) renderIndex(h *htmx.Handler, r *http.Request, data map[string]any)
 	page := htmx.NewComponent("templates/index.html").
 		FS(templates).
 		SetData(data).
-		AddTemplateFunction("slug", slug.Make).
 		With(
 			htmx.NewComponent("templates/_new.html").
 				FS(templates).
@@ -191,7 +198,7 @@ func (a *App) renderIndex(h *htmx.Handler, r *http.Request, data map[string]any)
 func (a *App) Show(w http.ResponseWriter, r *http.Request) {
 	h := a.htmx.NewHandler(w, r)
 
-	reviewID, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	reviewID, err := uuid.Parse(r.PathValue("id"))
 	if err != nil {
 		slog.Error("failed to parse id for show", "id", r.PathValue("id"), "error", err)
 		h.WriteHeader(http.StatusBadRequest)
@@ -234,7 +241,6 @@ func (a *App) Show(w http.ResponseWriter, r *http.Request) {
 				Attach("templates/contributing-causes/_fields.html"),
 			"ContributingCauses",
 		).
-		AddTemplateFunction("slug", slug.Make).
 		Wrap(baseContent(), "Body")
 
 	_, err = h.Render(r.Context(), page)
@@ -248,7 +254,7 @@ func (a *App) Show(w http.ResponseWriter, r *http.Request) {
 func (a *App) Edit(w http.ResponseWriter, r *http.Request) {
 	h := a.htmx.NewHandler(w, r)
 
-	reviewID, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	reviewID, err := uuid.Parse(r.PathValue("id"))
 	if err != nil {
 		slog.Error("failed to parse id for show", "id", r.PathValue("id"), "error", err)
 		h.WriteHeader(http.StatusBadRequest)
@@ -277,7 +283,6 @@ func (a *App) Edit(w http.ResponseWriter, r *http.Request) {
 		FS(templates).
 		SetData(data).
 		Attach("templates/_review-fields.html").
-		AddTemplateFunction("slug", slug.Make).
 		Wrap(baseContent(), "Body")
 
 	_, err = h.Render(r.Context(), page)
@@ -292,7 +297,7 @@ func (a *App) Edit(w http.ResponseWriter, r *http.Request) {
 func (a *App) Update(w http.ResponseWriter, r *http.Request) {
 	h := a.htmx.NewHandler(w, r)
 
-	reviewID, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	reviewID, err := uuid.Parse(r.PathValue("id"))
 	if err != nil {
 		slog.Error("failed to parse id for show", "id", r.PathValue("id"), "error", err)
 		h.WriteHeader(http.StatusBadRequest)
@@ -338,14 +343,14 @@ func (a *App) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// TODO: HTMX redirect so it doesn't reload the whole page and instead just loads the new content.
-	h.Header().Add("Location", fmt.Sprintf("/reviews/%d-%s", reviewID, slug.Make(inc.Title)))
+	h.Header().Add("Location", "/reviews/"+reviewID.String())
 	h.WriteHeader(http.StatusSeeOther)
 }
 
 func (a *App) CreateContributingCause(w http.ResponseWriter, r *http.Request) {
 	h := a.htmx.NewHandler(w, r)
 
-	reviewID, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	reviewID, err := uuid.Parse(r.PathValue("id"))
 	if err != nil {
 		slog.Error("failed to parse id for create contributing cause", "id", r.PathValue("id"), "error", err)
 		h.WriteHeader(http.StatusBadRequest)
@@ -375,7 +380,7 @@ func (a *App) CreateContributingCause(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// TODO: redirect to "show contributing causes" which provides the form and listing, so it doesn't reload everything.
-	h.Header().Add("Location", fmt.Sprintf("/reviews/%d-%s", reviewID, "❓"))
+	h.Header().Add("Location", "/reviews/"+reviewID.String())
 	h.WriteHeader(http.StatusSeeOther)
 }
 

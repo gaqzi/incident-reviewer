@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
@@ -23,7 +24,7 @@ func (m *storageMock) Save(ctx context.Context, review reviewing.Review) (review
 	return args.Get(0).(reviewing.Review), args.Error(1)
 }
 
-func (m *storageMock) Get(ctx context.Context, reviewID int64) (reviewing.Review, error) {
+func (m *storageMock) Get(ctx context.Context, reviewID uuid.UUID) (reviewing.Review, error) {
 	args := m.Called(ctx, reviewID)
 	return args.Get(0).(reviewing.Review), args.Error(1)
 }
@@ -136,18 +137,19 @@ func TestService_Get(t *testing.T) {
 	t.Run("returns the error from the underlying storage it errors", func(t *testing.T) {
 		store := new(storageMock)
 		store.Test(t)
-		store.On("Get", mock.Anything, int64(1)).Return(reviewing.Review{}, errors.New("uh-oh"))
+		id := uuid.Must(uuid.NewV7())
+		store.On("Get", mock.Anything, id).Return(reviewing.Review{}, errors.New("uh-oh"))
 		service := reviewing.NewService(store, nil)
 		ctx := context.Background()
 
-		_, actual := service.Get(ctx, 1)
+		_, actual := service.Get(ctx, id)
 
 		require.Error(t, actual, "expected an error since we haven't stored any reviews")
 		require.ErrorContainsf(t, actual, "failed to get review:", "so we know we got the correct error")
 	})
 
 	t.Run("returns the object when there is no error", func(t *testing.T) {
-		expected := reviewing.Review{ID: 1}
+		expected := a.Review().Build()
 		store := new(storageMock)
 		store.Test(t)
 		store.On("Get", mock.Anything, expected.ID).Return(expected, nil)
@@ -197,29 +199,31 @@ func TestService_All(t *testing.T) {
 
 func TestService_AddContributingCause(t *testing.T) {
 	t.Run("when review doesn't exist it returns the error from the storage", func(t *testing.T) {
+		id := uuid.Must(uuid.NewV7())
 		store := new(storageMock)
 		store.Test(t)
-		store.On("Get", mock.Anything, int64(1)).Return(reviewing.Review{}, errors.New("uh-oh"))
+		store.On("Get", mock.Anything, id).Return(reviewing.Review{}, errors.New("uh-oh"))
 		service := reviewing.NewService(store, nil)
 		ctx := context.Background()
 
-		actual := service.AddContributingCause(ctx, 1, 1, "because")
+		actual := service.AddContributingCause(ctx, id, 1, "because")
 
 		require.Error(t, actual, "expected an error since we haven't stored any reviews")
 		require.ErrorContainsf(t, actual, "failed to get review:", "so we know we got the correct error")
 	})
 
 	t.Run("when the contributing cause isn't known return the error from it", func(t *testing.T) {
+		id := uuid.Must(uuid.NewV7())
 		store := new(storageMock)
 		store.Test(t)
-		store.On("Get", mock.Anything, int64(1)).Return(reviewing.Review{ID: 1}, nil)
+		store.On("Get", mock.Anything, id).Return(reviewing.Review{ID: id}, nil)
 		causeStore := new(causeStorageMock)
 		causeStore.Test(t)
 		causeStore.On("Get", mock.Anything, int64(1)).Return(normalized.ContributingCause{}, errors.New("uh-oh"))
 		service := reviewing.NewService(store, causeStore)
 		ctx := context.Background()
 
-		actual := service.AddContributingCause(ctx, 1, 1, "because!")
+		actual := service.AddContributingCause(ctx, id, 1, "because!")
 
 		require.Error(t, actual, "expected an error when invalid cause provided")
 		require.ErrorContains(t, actual, "failed to get contributing cause:")
@@ -229,7 +233,7 @@ func TestService_AddContributingCause(t *testing.T) {
 		store := new(storageMock)
 		store.Test(t)
 		review := a.Review().IsValid().IsSaved().Build()
-		store.On("Get", mock.Anything, int64(1)).Return(review, nil)
+		store.On("Get", mock.Anything, review.ID).Return(review, nil)
 		causeStore := new(causeStorageMock)
 		causeStore.Test(t)
 		causeStore.On("Get", mock.Anything, int64(1)).Return(normalized.ContributingCause{ID: 1}, nil)
@@ -242,35 +246,36 @@ func TestService_AddContributingCause(t *testing.T) {
 		service := reviewing.NewService(store, causeStore)
 		ctx := context.Background()
 
-		actual := service.AddContributingCause(ctx, 1, 1, "because")
+		actual := service.AddContributingCause(ctx, review.ID, 1, "because")
 		require.NoError(t, actual, "expected to have bound the cause to the review successfully")
 	})
 }
 
 func TestReview_Update(t *testing.T) {
 	t.Run("an update with no changes doesn't modify the object", func(t *testing.T) {
-		orig := reviewing.Review{ID: 1}
-		upd := reviewing.Review{ID: 1}
+		orig := a.Review().Build()
+		upd := a.Review().Build()
 
 		actual := orig.Update(upd)
 
-		require.Equal(t, reviewing.Review{ID: 1}, actual, "expected orig to not have changed since all fields are the same")
+		require.Equal(t, a.Review().Build(), actual, "expected orig to not have changed since all fields are the same")
 	})
 
 	t.Run("an update to an allowed field updates the original object", func(t *testing.T) {
-		orig := reviewing.Review{ID: 1}
-		upd := reviewing.Review{ID: 2, URL: "http://example.com/"}
+		orig := a.Review().Build()
+		upd := a.Review().WithID(uuid.Must(uuid.NewV7())).WithURL("http://example.com/").Build()
 
 		actual := orig.Update(upd)
 
 		require.Equal(
 			t,
-			reviewing.Review{ID: 1, URL: "http://example.com/"},
+			a.Review().WithURL("http://example.com/").Build(),
 			actual,
 			"expected to have added the URL into the original object",
 		)
 	})
 
+	id := uuid.Must(uuid.NewV7())
 	for _, tc := range []struct {
 		name     string
 		upd      reviewing.Review
@@ -279,41 +284,41 @@ func TestReview_Update(t *testing.T) {
 		{
 			"URL",
 			reviewing.Review{URL: "http://example.com/"},
-			reviewing.Review{ID: 1, URL: "http://example.com/"},
+			reviewing.Review{ID: id, URL: "http://example.com/"},
 		},
 		{
 			"Title",
 			reviewing.Review{Title: "example"},
-			reviewing.Review{ID: 1, Title: "example"},
+			reviewing.Review{ID: id, Title: "example"},
 		},
 		{
 			"Description",
 			reviewing.Review{Description: "example"},
-			reviewing.Review{ID: 1, Description: "example"},
+			reviewing.Review{ID: id, Description: "example"},
 		},
 		{
 			"Impact",
 			reviewing.Review{Impact: "example"},
-			reviewing.Review{ID: 1, Impact: "example"},
+			reviewing.Review{ID: id, Impact: "example"},
 		},
 		{
 			"Where",
 			reviewing.Review{Where: "example"},
-			reviewing.Review{ID: 1, Where: "example"},
+			reviewing.Review{ID: id, Where: "example"},
 		},
 		{
 			"ReportProximalCause",
 			reviewing.Review{ReportProximalCause: "example"},
-			reviewing.Review{ID: 1, ReportProximalCause: "example"},
+			reviewing.Review{ID: id, ReportProximalCause: "example"},
 		},
 		{
 			"ReportTrigger: ",
 			reviewing.Review{ReportTrigger: "example"},
-			reviewing.Review{ID: 1, ReportTrigger: "example"},
+			reviewing.Review{ID: id, ReportTrigger: "example"},
 		},
 	} {
 		t.Run("updates field: "+tc.name, func(t *testing.T) {
-			orig := reviewing.Review{ID: 1}
+			orig := reviewing.Review{ID: id}
 
 			actual := orig.Update(tc.upd)
 

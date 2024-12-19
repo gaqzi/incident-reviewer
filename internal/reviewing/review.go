@@ -5,19 +5,21 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/gaqzi/incident-reviewer/internal/normalized"
 	"github.com/gaqzi/incident-reviewer/internal/platform/validate"
 )
 
 type Review struct {
-	ID                  int64  `validate:"required"`
-	URL                 string `validate:"required,http_url"`
-	Title               string `validate:"required"`
-	Description         string `validate:"required"`
-	Impact              string `validate:"required"`
-	Where               string `validate:"required"`
-	ReportProximalCause string `validate:"required"`
-	ReportTrigger       string `validate:"required"`
+	ID                  uuid.UUID `validate:"required"`
+	URL                 string    `validate:"required,http_url"`
+	Title               string    `validate:"required"`
+	Description         string    `validate:"required"`
+	Impact              string    `validate:"required"`
+	Where               string    `validate:"required"`
+	ReportProximalCause string    `validate:"required"`
+	ReportTrigger       string    `validate:"required"`
 
 	ContributingCauses []ReviewCause
 
@@ -27,7 +29,7 @@ type Review struct {
 
 // NewReview returns a reviewing.Review with a valid ID set.
 func NewReview() Review {
-	return Review{ID: 1} // TODO: migrate to UUID
+	return Review{ID: uuid.Must(uuid.NewV7())}
 }
 
 // Update takes the values from the passed in review and sets the fields that are allowed for mass changes.
@@ -95,7 +97,7 @@ func (s *Service) Save(ctx context.Context, review Review) (Review, error) {
 	return review, nil
 }
 
-func (s *Service) Get(ctx context.Context, reviewID int64) (Review, error) {
+func (s *Service) Get(ctx context.Context, reviewID uuid.UUID) (Review, error) {
 	review, err := s.reviewStore.Get(ctx, reviewID)
 	if err != nil {
 		return Review{}, fmt.Errorf("failed to get review: %w", err)
@@ -113,7 +115,7 @@ func (s *Service) All(ctx context.Context) ([]Review, error) {
 	return ret, nil
 }
 
-func (s *Service) AddContributingCause(ctx context.Context, reviewID int64, causeID int64, why string) error {
+func (s *Service) AddContributingCause(ctx context.Context, reviewID uuid.UUID, causeID int64, why string) error {
 	review, err := s.reviewStore.Get(ctx, reviewID)
 	if err != nil {
 		return fmt.Errorf("failed to get review: %w", err)

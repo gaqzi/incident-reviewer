@@ -3,7 +3,7 @@
         <h1>Create new review</h1>
 
         {{ if .Data.New }}
-            <p class="notice success">Successfully created review <a href="/reviews/{{ .Data.New.Created.ID }}-{{ slug .Data.New.Created.Title }}">{{ .Data.New.Created.Title }}</a>!</p>
+            <p class="notice success">Successfully created review <a href="/reviews/{{ .Data.New.Created.ID }}">{{ .Data.New.Created.Title }}</a>!</p>
         {{ end }}
 
         {{ .Partials.New }}
@@ -17,7 +17,7 @@
 
         <ul>
             {{ range .Data.Reviews }}
-                <li><a href="/reviews/{{ .ID }}-{{slug .Title }}">{{ .Title }}</a></li>
+                <li><a href="/reviews/{{ .ID }}">{{ .Title }}</a></li>
             {{ end }}
         </ul>
     </section>

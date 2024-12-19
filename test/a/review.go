@@ -4,6 +4,8 @@ package a
 import (
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/gaqzi/incident-reviewer/internal/reviewing"
 )
 
@@ -32,7 +34,7 @@ func (b BuilderReview) IsInvalid() BuilderReview {
 
 // IsValid prepares a reviewing.Review that will pass validation.
 func (b BuilderReview) IsValid() BuilderReview {
-	b.r.ID = 1
+	b.r.ID = uuid.MustParse("0193dd86-b07e-7e73-a77e-724bee1fa176") // UUIDv7, just a value, no particular meaning
 	b.r.URL = "https://example.com/reviews/1"
 	b.r.Title = "Something"
 	b.r.Description = "At the bottom of the sea"
@@ -68,8 +70,14 @@ func (b BuilderReview) IsNotSaved() BuilderReview {
 }
 
 // WithID prepares the reviewing.Review with the passed in id.
-func (b BuilderReview) WithID(id int64) BuilderReview {
+func (b BuilderReview) WithID(id uuid.UUID) BuilderReview {
 	b.r.ID = id
+
+	return b
+}
+
+func (b BuilderReview) WithURL(url string) BuilderReview {
+	b.r.URL = url
 
 	return b
 }
