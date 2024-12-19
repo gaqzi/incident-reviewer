@@ -16,12 +16,33 @@ type ContributingCause struct {
 	UpdatedAt time.Time
 }
 
+func (cc ContributingCause) updateTimestamps() ContributingCause {
+	now := time.Now()
+	if cc.CreatedAt.IsZero() {
+		cc.CreatedAt = now
+	}
+	cc.UpdatedAt = now
+
+	return cc
+}
+
 type ContributingCauseService struct {
 	store ContributingCauseStorage
 }
 
 func NewContributingCauseService(store ContributingCauseStorage) *ContributingCauseService {
 	return &ContributingCauseService{store: store}
+}
+
+func (s *ContributingCauseService) Save(ctx context.Context, cc ContributingCause) (ContributingCause, error) {
+	cc = cc.updateTimestamps()
+
+	cc, err := s.store.Save(ctx, cc)
+	if err != nil {
+		return cc, fmt.Errorf("failed to store contributing cause: %w", err)
+	}
+
+	return cc, nil
 }
 
 func (s *ContributingCauseService) All(ctx context.Context) ([]ContributingCause, error) {
