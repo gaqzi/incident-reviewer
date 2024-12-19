@@ -200,24 +200,13 @@ func (a *reviewsHandler) Show(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	review, err := a.service.Get(r.Context(), reviewID)
+	review, err := a.loadReview(r.Context(), h, reviewID)
 	if err != nil {
-		slog.Info("get review error", "error", err)
-
-		var notFoundError *storage.NoReviewError
-		if errors.As(err, &notFoundError) {
-			h.WriteHeader(http.StatusNotFound)
-			h.JustWriteString(fmt.Sprintf("404: review by id '%d' not found.", reviewID))
-			return
-		}
-		slog.Error("error finding review", "error", err)
+		return
 	}
 
-	contributingCauses, err := a.causeStore.All(r.Context())
+	contributingCauses, err := a.loadContributingCauses(r.Context(), h)
 	if err != nil {
-		slog.Info("get all contributing causes error", "error", err)
-		h.WriteHeader(http.StatusInternalServerError)
-		h.JustWriteString(err.Error())
 		return
 	}
 
@@ -231,12 +220,7 @@ func (a *reviewsHandler) Show(w http.ResponseWriter, r *http.Request) {
 		).
 		Wrap(baseContent(), "Body")
 
-	_, err = h.Render(r.Context(), page)
-	if err != nil {
-		slog.Error("failed to render", "error", err)
-		h.WriteHeader(http.StatusInternalServerError)
-		_, _ = h.WriteString("failed to render")
-	}
+	a.render(r.Context(), h, page)
 }
 
 func (a *reviewsHandler) Edit(w http.ResponseWriter, r *http.Request) {
@@ -368,33 +352,62 @@ func (a *reviewsHandler) CreateContributingCause(w http.ResponseWriter, r *http.
 	if err := a.service.AddContributingCause(r.Context(), reviewID, causeBasic.ContributingCauseID, causeBasic.Why); err != nil {
 		slog.Error("failed to create contributing cause", "reviewID", reviewID, "error", err)
 		h.WriteHeader(http.StatusBadRequest)
-		h.JustWriteString(err.Error())
 		return
 	}
 
-	review, err := a.service.Get(r.Context(), reviewID)
+	review, err := a.loadReview(r.Context(), h, reviewID)
 	if err != nil {
-		slog.Error("failed to fetch the review after binding new cause", "error", err)
-		h.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	contributingCauses, err := a.causeStore.All(r.Context())
+	contributingCauses, err := a.loadContributingCauses(r.Context(), h)
 	if err != nil {
-		slog.Error("failed to fetch all contributing causes after binding new cause", "error", err)
-		h.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	httpReview := convertToHttpObject(review)
 	page := contributingCausesComponent(httpReview.ID, contributingCauses, httpReview.ContributingCauses)
 
-	_, err = h.Render(r.Context(), page)
-	if err != nil {
-		slog.Error("failed to render contributing-causes after binding new cause", "error", err)
-		h.WriteHeader(http.StatusInternalServerError)
-		return
+	a.render(r.Context(), h, page)
+}
+
+func (a *reviewsHandler) hasErrored(h *htmx.Handler, err error, status int, msg string, args ...any) bool {
+	if err == nil {
+		return false
 	}
+
+	slog.Error(msg, args...)
+	h.WriteHeader(status)
+
+	return true
+}
+
+func (a *reviewsHandler) loadReview(ctx context.Context, h *htmx.Handler, reviewID uuid.UUID) (reviewing.Review, error) {
+	review, err := a.service.Get(ctx, reviewID)
+	if err != nil {
+		var notFoundError *storage.NoReviewError
+		if errors.As(err, &notFoundError) {
+			h.WriteHeader(http.StatusNotFound)
+			h.JustWriteString(fmt.Sprintf("404: review by id '%d' not found.", reviewID))
+			return reviewing.Review{}, err
+		}
+		slog.Error("error finding review", "error", err)
+	}
+	return review, err
+}
+
+func (a *reviewsHandler) loadContributingCauses(ctx context.Context, h *htmx.Handler) ([]contributing.Cause, error) {
+	contributingCauses, err := a.causeStore.All(ctx)
+	if a.hasErrored(h, err, http.StatusInternalServerError, "failed to get all contributing causes", "error", err) {
+		return nil, err
+	}
+
+	return contributingCauses, nil
+}
+
+func (a *reviewsHandler) render(ctx context.Context, h *htmx.Handler, page htmx.RenderableComponent) {
+	_, err := h.Render(ctx, page)
+	_ = a.hasErrored(h, err, http.StatusInternalServerError, "failed to render", "error", err)
 }
 
 func baseContent() htmx.RenderableComponent {
