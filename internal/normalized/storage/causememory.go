@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"maps"
 	"slices"
-	"time"
 
 	"github.com/gaqzi/incident-reviewer/internal/normalized"
 	"github.com/gaqzi/incident-reviewer/internal/platform/validate"
@@ -42,12 +41,6 @@ func (s *ContributingCauseMemoryStore) Save(ctx context.Context, cause normalize
 		s.currentID++
 		cause.ID = s.currentID
 	}
-
-	now := time.Now()
-	if cause.CreatedAt.IsZero() {
-		cause.CreatedAt = now
-	}
-	cause.UpdatedAt = now
 
 	s.data[cause.ID] = cause
 
