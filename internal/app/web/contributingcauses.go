@@ -38,8 +38,7 @@ func (a *causesHandler) New(w http.ResponseWriter, r *http.Request) {
 
 	newForm := htmx.NewComponent("templates/contributing-causes/new.html").
 		FS(templates).
-		Attach("templates/contributing-causes/_fields.html").
-		AddData("ReturnTo", r.Header.Get("hx-current-url"))
+		Attach("templates/contributing-causes/_fields.html")
 
 	if !h.IsHxRequest() {
 		h.WriteHeader(http.StatusNotFound)

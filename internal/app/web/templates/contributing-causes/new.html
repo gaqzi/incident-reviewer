@@ -1,6 +1,4 @@
 <form method="post" action="/contributing-causes">
-    <input type="hidden" name="returnTo" value="{{ .Data.ReturnTo }}">
-
     {{ template "contributing-cause-fields" .Data }}
 
     <button type="submit">Propose new</button>
