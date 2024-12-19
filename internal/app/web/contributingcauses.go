@@ -1,8 +1,7 @@
-package http
+package web
 
 import (
 	"context"
-	"embed"
 	"encoding/json"
 	"log/slog"
 	"net/http"
@@ -14,22 +13,17 @@ import (
 	"github.com/gaqzi/incident-reviewer/internal/normalized/contributing"
 )
 
-var (
-	//go:embed all:templates/*
-	templates embed.FS
-)
-
 type causeService interface {
 	Save(ctx context.Context, cause contributing.Cause) (contributing.Cause, error)
 }
 
-type app struct {
+type causesHandler struct {
 	htmx    *htmx.HTMX
 	service causeService
 }
 
-func Handler(service causeService) func(chi.Router) {
-	a := app{
+func ContributingCausesHandler(service causeService) func(chi.Router) {
+	a := causesHandler{
 		htmx:    htmx.New(),
 		service: service,
 	}
@@ -40,12 +34,12 @@ func Handler(service causeService) func(chi.Router) {
 	}
 }
 
-func (a *app) New(w http.ResponseWriter, r *http.Request) {
+func (a *causesHandler) New(w http.ResponseWriter, r *http.Request) {
 	h := a.htmx.NewHandler(w, r)
 
-	newForm := htmx.NewComponent("templates/new.html").
+	newForm := htmx.NewComponent("templates/contributing-causes/new.html").
 		FS(templates).
-		Attach("templates/_fields.html").
+		Attach("templates/contributing-causes/_fields.html").
 		AddData("ReturnTo", r.Header.Get("hx-current-url"))
 
 	if !h.IsHxRequest() {
@@ -61,7 +55,7 @@ func (a *app) New(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (a *app) Create(w http.ResponseWriter, r *http.Request) {
+func (a *causesHandler) Create(w http.ResponseWriter, r *http.Request) {
 	h := a.htmx.NewHandler(w, r)
 
 	if !h.IsHxRequest() {
