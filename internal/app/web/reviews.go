@@ -176,7 +176,7 @@ func (a *reviewsHandler) renderIndex(h *htmx.Handler, r *http.Request, data map[
 		With(
 			htmx.NewComponent("templates/reviews/_new.html").
 				FS(templates).
-				Attach("templates/reviews/_review-fields.html"),
+				Attach("templates/reviews/__review-fields.html"),
 			"New",
 		).
 		Wrap(baseContent(), "Body")
@@ -277,7 +277,7 @@ func (a *reviewsHandler) Edit(w http.ResponseWriter, r *http.Request) {
 	page := htmx.NewComponent("templates/reviews/edit.html").
 		FS(templates).
 		SetData(data).
-		Attach("templates/reviews/_review-fields.html").
+		Attach("templates/reviews/__review-fields.html").
 		Wrap(baseContent(), "Body")
 
 	_, err = h.Render(r.Context(), page)
