@@ -65,3 +65,12 @@ func (s *ContributingCauseService) All(ctx context.Context) ([]ContributingCause
 
 	return ret, nil
 }
+
+func (s *ContributingCauseService) Get(ctx context.Context, id uuid.UUID) (ContributingCause, error) {
+	cc, err := s.store.Get(ctx, id)
+	if err != nil {
+		return ContributingCause{}, fmt.Errorf("failed to get contributing cause: %w", err)
+	}
+
+	return cc, nil
+}
