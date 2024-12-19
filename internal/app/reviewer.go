@@ -72,9 +72,7 @@ func Start(ctx context.Context, cfg Config) (*Server, error) {
 
 	httpassets.PublicAssets(r)
 
-	causeStore := normStore.NewContributingCauseMemoryStore()
-	causeService := normalized.NewContributingCauseService(causeStore)
-
+	causeService := normalized.NewContributingCauseService(normStore.NewContributingCauseMemoryStore())
 	cause := normalized.NewContributingCause()
 	cause.Name = "Third party outage"
 	cause.Description = "In case a third party experienced issues/outage and it leads to an incident on our side.\nThings like third party changing configuration and it leading to issues on our side also qualifies"
@@ -85,7 +83,7 @@ func Start(ctx context.Context, cfg Config) (*Server, error) {
 	}
 
 	reviewStore := reviewstorage.NewMemoryStore()
-	reviewService := reviewing.NewService(reviewStore, causeStore)
+	reviewService := reviewing.NewService(reviewStore, causeService)
 	r.Route("/reviews", revhttp.Handler(reviewService, causeService))
 
 	go (func() {

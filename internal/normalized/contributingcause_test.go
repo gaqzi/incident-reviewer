@@ -103,6 +103,32 @@ func TestContributingCauseService_Save(t *testing.T) {
 	})
 }
 
+func TestContributingCauseService_Get(t *testing.T) {
+	t.Run("wraps any storage error and returns it", func(t *testing.T) {
+		storage := new(causeStorageMock)
+		storage.Test(t)
+		storage.On("Get", mock.Anything, mock.Anything).Return(normalized.ContributingCause{}, errors.New("uh-oh"))
+		service := normalized.NewContributingCauseService(storage)
+
+		_, actual := service.Get(context.Background(), uuid.Nil)
+
+		require.ErrorContains(t, actual, "failed to get contributing cause:")
+	})
+
+	t.Run("with no errors from storage return the object as-is", func(t *testing.T) {
+		storage := new(causeStorageMock)
+		storage.Test(t)
+		expected := a.ContributingCause().Build()
+		storage.On("Get", mock.Anything, expected.ID).Return(expected, nil)
+		service := normalized.NewContributingCauseService(storage)
+
+		actual, err := service.Get(context.Background(), expected.ID)
+
+		require.NoError(t, err)
+		require.Equal(t, expected, actual, "expected an unchanged contributing cause back")
+	})
+}
+
 func TestContributingCauseService_All(t *testing.T) {
 	t.Run("returns a wrapped error if one is returned from the storage", func(t *testing.T) {
 		storage := new(causeStorageMock)
