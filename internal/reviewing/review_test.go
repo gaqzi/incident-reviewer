@@ -38,7 +38,7 @@ type causeStorageMock struct {
 	mock.Mock
 }
 
-func (m *causeStorageMock) Get(ctx context.Context, id int64) (normalized.ContributingCause, error) {
+func (m *causeStorageMock) Get(ctx context.Context, id uuid.UUID) (normalized.ContributingCause, error) {
 	args := m.Called(ctx, id)
 	return args.Get(0).(normalized.ContributingCause), args.Error(1)
 }
@@ -206,7 +206,7 @@ func TestService_AddContributingCause(t *testing.T) {
 		service := reviewing.NewService(store, nil)
 		ctx := context.Background()
 
-		actual := service.AddContributingCause(ctx, id, 1, "because")
+		actual := service.AddContributingCause(ctx, id, uuid.Nil, "because")
 
 		require.Error(t, actual, "expected an error since we haven't stored any reviews")
 		require.ErrorContainsf(t, actual, "failed to get review:", "so we know we got the correct error")
@@ -219,11 +219,11 @@ func TestService_AddContributingCause(t *testing.T) {
 		store.On("Get", mock.Anything, id).Return(reviewing.Review{ID: id}, nil)
 		causeStore := new(causeStorageMock)
 		causeStore.Test(t)
-		causeStore.On("Get", mock.Anything, int64(1)).Return(normalized.ContributingCause{}, errors.New("uh-oh"))
+		causeStore.On("Get", mock.Anything, uuid.Nil).Return(normalized.ContributingCause{}, errors.New("uh-oh"))
 		service := reviewing.NewService(store, causeStore)
 		ctx := context.Background()
 
-		actual := service.AddContributingCause(ctx, id, 1, "because!")
+		actual := service.AddContributingCause(ctx, id, uuid.Nil, "because!")
 
 		require.Error(t, actual, "expected an error when invalid cause provided")
 		require.ErrorContains(t, actual, "failed to get contributing cause:")
@@ -236,17 +236,18 @@ func TestService_AddContributingCause(t *testing.T) {
 		store.On("Get", mock.Anything, review.ID).Return(review, nil)
 		causeStore := new(causeStorageMock)
 		causeStore.Test(t)
-		causeStore.On("Get", mock.Anything, int64(1)).Return(normalized.ContributingCause{ID: 1}, nil)
+		cause := a.ContributingCause().Build()
+		causeStore.On("Get", mock.Anything, uuid.Nil).Return(cause, nil)
 		storedReview := review
 		storedReview.ContributingCauses = append(storedReview.ContributingCauses, reviewing.ReviewCause{ // make sure we create the ReviewCause correctly and attach it
-			Cause: normalized.ContributingCause{ID: 1},
+			Cause: cause,
 			Why:   "because",
 		})
 		store.On("Save", mock.Anything, mock.IsType(reviewing.Review{})).Return(storedReview, nil)
 		service := reviewing.NewService(store, causeStore)
 		ctx := context.Background()
 
-		actual := service.AddContributingCause(ctx, review.ID, 1, "because")
+		actual := service.AddContributingCause(ctx, review.ID, uuid.Nil, "because")
 		require.NoError(t, actual, "expected to have bound the cause to the review successfully")
 	})
 }

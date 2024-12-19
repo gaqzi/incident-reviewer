@@ -5,21 +5,23 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/gaqzi/incident-reviewer/internal/platform/validate"
 )
 
 type ContributingCause struct {
-	ID          int64  `validate:"required"`
-	Name        string `validate:"required"`
-	Description string `validate:"required"`
-	Category    string `validate:"required"`
+	ID          uuid.UUID `validate:"required"`
+	Name        string    `validate:"required"`
+	Description string    `validate:"required"`
+	Category    string    `validate:"required"`
 
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
 
 func NewContributingCause() ContributingCause {
-	return ContributingCause{ID: 1} // TODO: Make UUID
+	return ContributingCause{ID: uuid.Must(uuid.NewV7())}
 }
 
 func (cc ContributingCause) updateTimestamps() ContributingCause {

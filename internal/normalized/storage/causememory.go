@@ -5,22 +5,24 @@ import (
 	"maps"
 	"slices"
 
+	"github.com/google/uuid"
+
 	"github.com/gaqzi/incident-reviewer/internal/normalized"
 )
 
 // TODO: refactor into a generic implementation because the logic is the same across this one and reviewing/storage.MemoryStore.
 
 type ContributingCauseMemoryStore struct {
-	data map[int64]normalized.ContributingCause
+	data map[uuid.UUID]normalized.ContributingCause
 }
 
 func NewContributingCauseMemoryStore() *ContributingCauseMemoryStore {
 	return &ContributingCauseMemoryStore{
-		data: make(map[int64]normalized.ContributingCause),
+		data: make(map[uuid.UUID]normalized.ContributingCause),
 	}
 }
 
-func (s *ContributingCauseMemoryStore) Get(_ context.Context, id int64) (normalized.ContributingCause, error) {
+func (s *ContributingCauseMemoryStore) Get(_ context.Context, id uuid.UUID) (normalized.ContributingCause, error) {
 	cause, ok := s.data[id]
 	if !ok {
 		return normalized.ContributingCause{}, &NoContributingCauseError{ID: id}
@@ -30,7 +32,7 @@ func (s *ContributingCauseMemoryStore) Get(_ context.Context, id int64) (normali
 }
 
 func (s *ContributingCauseMemoryStore) Save(_ context.Context, cause normalized.ContributingCause) (normalized.ContributingCause, error) {
-	if cause.ID == 0 {
+	if cause.ID == uuid.Nil {
 		return normalized.ContributingCause{}, NoIDError
 	}
 
@@ -44,7 +46,17 @@ func (s *ContributingCauseMemoryStore) All(_ context.Context) ([]normalized.Cont
 
 	// Sort all the keys for the store, which returns keys in a non-deterministic order,
 	// and the sort order is 1, 2, 3… by the ID, which is monotonically incrementing
-	keys := slices.Sorted(maps.Keys(s.data))
+	keys := slices.SortedFunc(maps.Keys(s.data), func(u uuid.UUID, u2 uuid.UUID) int {
+		t1, t2 := u.Time(), u2.Time()
+		switch {
+		case t1 < t2:
+			return -1
+		case t1 > t2:
+			return 1
+		default:
+			return 0
+		}
+	})
 	// and since I want them returned with most recent first, reverse it after sorting
 	slices.Reverse(keys)
 

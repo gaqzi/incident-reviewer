@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 
 	"github.com/gaqzi/incident-reviewer/internal/normalized"
@@ -41,7 +42,7 @@ func ContributingCauseStorageTest(t *testing.T, ctx context.Context, storeFactor
 		t.Run("returns an error when an item with the given PK doesn't exist in the store", func(t *testing.T) {
 			store := storeFactory()
 
-			_, err := store.Get(ctx, 1_000)
+			_, err := store.Get(ctx, uuid.Nil)
 			require.Error(t, err, "expected to not have found an item when it's not in the store")
 
 			var actualErr *storage.NoContributingCauseError
@@ -91,7 +92,7 @@ func ContributingCauseStorageTest(t *testing.T, ctx context.Context, storeFactor
 			store := storeFactory()
 			cause1, err := store.Save(ctx, a.ContributingCause().Build())
 			require.NoError(t, err, "expected to have saved successfully")
-			cause2, err := store.Save(ctx, a.ContributingCause().WithID(2).WithName("Unbounded resource utilization").Build())
+			cause2, err := store.Save(ctx, a.ContributingCause().WithID(uuid.Must(uuid.NewV7())).WithName("Unbounded resource utilization").Build())
 			require.NoError(t, err)
 
 			actual, err := store.All(ctx)

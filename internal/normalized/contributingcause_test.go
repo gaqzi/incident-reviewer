@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
@@ -17,7 +18,7 @@ type causeStorageMock struct {
 	mock.Mock
 }
 
-func (m *causeStorageMock) Get(ctx context.Context, id int64) (normalized.ContributingCause, error) {
+func (m *causeStorageMock) Get(ctx context.Context, id uuid.UUID) (normalized.ContributingCause, error) {
 	args := m.Called(ctx, id)
 	return args.Get(0).(normalized.ContributingCause), args.Error(1)
 }
@@ -119,7 +120,7 @@ func TestContributingCauseService_All(t *testing.T) {
 	t.Run("returns the returned object when no errors", func(t *testing.T) {
 		storage := new(causeStorageMock)
 		storage.Test(t)
-		storage.On("All", mock.Anything).Return([]normalized.ContributingCause{{ID: 1}}, nil)
+		storage.On("All", mock.Anything).Return([]normalized.ContributingCause{a.ContributingCause().Build()}, nil)
 		ctx := context.Background()
 		service := normalized.NewContributingCauseService(storage)
 
@@ -128,7 +129,7 @@ func TestContributingCauseService_All(t *testing.T) {
 
 		require.Equal(
 			t,
-			[]normalized.ContributingCause{{ID: 1}},
+			[]normalized.ContributingCause{a.ContributingCause().Build()},
 			actual,
 		)
 	})

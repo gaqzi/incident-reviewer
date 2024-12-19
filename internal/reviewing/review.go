@@ -67,7 +67,7 @@ type ReviewCause struct {
 }
 
 type causeStore interface {
-	Get(ctx context.Context, ID int64) (normalized.ContributingCause, error)
+	Get(ctx context.Context, id uuid.UUID) (normalized.ContributingCause, error)
 }
 
 type Service struct {
@@ -115,7 +115,7 @@ func (s *Service) All(ctx context.Context) ([]Review, error) {
 	return ret, nil
 }
 
-func (s *Service) AddContributingCause(ctx context.Context, reviewID uuid.UUID, causeID int64, why string) error {
+func (s *Service) AddContributingCause(ctx context.Context, reviewID uuid.UUID, causeID uuid.UUID, why string) error {
 	review, err := s.reviewStore.Get(ctx, reviewID)
 	if err != nil {
 		return fmt.Errorf("failed to get review: %w", err)

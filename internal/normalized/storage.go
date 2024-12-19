@@ -1,9 +1,13 @@
 package normalized
 
-import "context"
+import (
+	"context"
+
+	"github.com/google/uuid"
+)
 
 type ContributingCauseStorage interface {
-	Get(ctx context.Context, ID int64) (ContributingCause, error)
+	Get(ctx context.Context, id uuid.UUID) (ContributingCause, error)
 
 	Save(ctx context.Context, cause ContributingCause) (ContributingCause, error)
 
