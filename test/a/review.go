@@ -1,0 +1,80 @@
+// Package a happily stolen from Working Effectively with Unit Tests.
+package a
+
+import (
+	"time"
+
+	"github.com/gaqzi/incident-reviewer/internal/reviewing"
+)
+
+type BuilderReview struct {
+	r reviewing.Review
+}
+
+// Review prepares a reviewing.Review that is valid and saved by default but allows for customization.
+func Review() BuilderReview {
+	r := BuilderReview{}
+
+	return r.IsValid().IsSaved()
+}
+
+// Build returns the prepared reviewing.Review.
+func (b BuilderReview) Build() reviewing.Review {
+	return b.r
+}
+
+// IsInvalid prepares a reviewing.Review that will fail validation.
+func (b BuilderReview) IsInvalid() BuilderReview {
+	b.r = reviewing.Review{}
+
+	return b
+}
+
+// IsValid prepares a reviewing.Review that will pass validation.
+func (b BuilderReview) IsValid() BuilderReview {
+	b.r.URL = "https://example.com/reviews/1"
+	b.r.Title = "Something"
+	b.r.Description = "At the bottom of the sea"
+	b.r.Impact = "did a bunch of things"
+	b.r.Where = "At land"
+	b.r.ReportProximalCause = "Broken"
+	b.r.ReportTrigger = "Special operation"
+
+	return b
+}
+
+// IsSaved prepares a reviewing.Review that has previously been saved.
+// This means we've provided valid:
+// - ID
+// - CreatedAt
+// - UpdatedAt
+func (b BuilderReview) IsSaved() BuilderReview {
+	b.r.ID = 1
+	createdAt, err := time.Parse(time.RFC3339Nano, "2024-12-17T18:50:02.1323Z")
+	if err != nil {
+		panic("failed to parse example timestamp: " + err.Error())
+	}
+	b.r.CreatedAt = createdAt
+	b.r.UpdatedAt = createdAt
+
+	return b
+}
+
+// IsNotSaved prepares a reviewing.Review that has not been saved.
+func (b BuilderReview) IsNotSaved() BuilderReview {
+	b.r.ID = 0
+	b.r.CreatedAt = time.Time{}
+	b.r.UpdatedAt = time.Time{}
+
+	return b
+}
+
+// Modify allows you to specify a custom override while preparing.
+// Note: consider naming your pattern and adding it to the builder.
+func (b BuilderReview) Modify(mods ...func(r *reviewing.Review)) BuilderReview {
+	for _, mod := range mods {
+		mod(&b.r)
+	}
+
+	return b
+}

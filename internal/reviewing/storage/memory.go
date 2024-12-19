@@ -2,12 +2,10 @@ package storage
 
 import (
 	"context"
-	"fmt"
 	"maps"
 	"slices"
 	"time"
 
-	"github.com/gaqzi/incident-reviewer/internal/platform/validate"
 	"github.com/gaqzi/incident-reviewer/internal/reviewing"
 )
 
@@ -22,11 +20,7 @@ func NewMemoryStore() *MemoryStore {
 	}
 }
 
-func (s *MemoryStore) Save(ctx context.Context, inc reviewing.Review) (reviewing.Review, error) {
-	if err := validate.Struct(ctx, inc); err != nil {
-		return reviewing.Review{}, fmt.Errorf("failed to validate incident: %w", err)
-	}
-
+func (s *MemoryStore) Save(_ context.Context, inc reviewing.Review) (reviewing.Review, error) {
 	if inc.ID == 0 {
 		s.currentID++
 		inc.ID = s.currentID

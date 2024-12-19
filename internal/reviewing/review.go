@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/gaqzi/incident-reviewer/internal/normalized"
+	"github.com/gaqzi/incident-reviewer/internal/platform/validate"
 )
 
 type Review struct {
@@ -61,6 +62,10 @@ func NewService(reviewStore Storage, causeStore causeStore) *Service {
 }
 
 func (s *Service) Save(ctx context.Context, review Review) (Review, error) {
+	if err := validate.Struct(ctx, review); err != nil {
+		return Review{}, fmt.Errorf("failed to validate review: %w", err)
+	}
+
 	review, err := s.reviewStore.Save(ctx, review)
 	if err != nil {
 		return Review{}, fmt.Errorf("failed to save review in storage: %w", err)
@@ -103,7 +108,7 @@ func (s *Service) AddContributingCause(ctx context.Context, reviewID int64, caus
 		Why:   why,
 	})
 
-	_, err = s.reviewStore.Save(ctx, review)
+	_, err = s.Save(ctx, review)
 	if err != nil {
 		return fmt.Errorf("failed to save review: %w", err)
 	}

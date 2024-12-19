@@ -10,6 +10,7 @@ import (
 
 	"github.com/gaqzi/incident-reviewer/internal/normalized"
 	"github.com/gaqzi/incident-reviewer/internal/reviewing"
+	"github.com/gaqzi/incident-reviewer/test/a"
 )
 
 type storageMock struct {
@@ -44,11 +45,12 @@ func TestService_Save(t *testing.T) {
 	t.Run("returns the error from the underlying storage it errors", func(t *testing.T) {
 		store := new(storageMock)
 		store.Test(t)
-		store.On("Save", mock.Anything, reviewing.Review{}).Return(reviewing.Review{}, errors.New("uh-oh"))
+		review := a.Review().IsValid().Build()
+		store.On("Save", mock.Anything, review).Return(reviewing.Review{}, errors.New("uh-oh"))
 		service := reviewing.NewService(store, nil)
 		ctx := context.Background()
 
-		_, actual := service.Save(ctx, reviewing.Review{})
+		_, actual := service.Save(ctx, review)
 
 		require.Error(t, actual, "expected an error since the mock storage always fails")
 		require.ErrorContains(t, actual, "failed to save review in storage:")
@@ -57,19 +59,33 @@ func TestService_Save(t *testing.T) {
 	t.Run("returns the object from save when it saves successfully", func(t *testing.T) {
 		store := new(storageMock)
 		store.Test(t)
-		store.On("Save", mock.Anything, reviewing.Review{}).Return(reviewing.Review{ID: 1}, nil)
+		store.
+			On("Save", mock.Anything, a.Review().IsNotSaved().Build()).
+			Return(a.Review().Build(), nil)
 		service := reviewing.NewService(store, nil)
 		ctx := context.Background()
 
-		actual, err := service.Save(ctx, reviewing.Review{})
+		actual, err := service.Save(ctx, a.Review().IsNotSaved().Build())
 		require.NoError(t, err)
 
 		require.Equal(
 			t,
-			reviewing.Review{ID: 1},
+			a.Review().Build(),
 			actual,
 			"expected the returned version from storage to be returned",
 		)
+	})
+
+	t.Run("validates", func(t *testing.T) {
+		t.Run("and returns an error when validation fails", func(t *testing.T) {
+			service := reviewing.NewService(nil, nil)
+			ctx := context.Background()
+
+			_, actual := service.Save(ctx, reviewing.Review{})
+
+			require.Error(t, actual, "expected an empty review to be invalid")
+			require.ErrorContains(t, actual, "failed to validate review:")
+		})
 	})
 }
 
@@ -88,21 +104,19 @@ func TestService_Get(t *testing.T) {
 	})
 
 	t.Run("returns the object when there is no error", func(t *testing.T) {
-		review := reviewing.Review{
-			ID: 1,
-		}
+		expected := reviewing.Review{ID: 1}
 		store := new(storageMock)
 		store.Test(t)
-		store.On("Get", mock.Anything, review.ID).Return(review, nil)
+		store.On("Get", mock.Anything, expected.ID).Return(expected, nil)
 		service := reviewing.NewService(store, nil)
 		ctx := context.Background()
 
-		actual, err := service.Get(ctx, review.ID)
+		actual, err := service.Get(ctx, expected.ID)
 		require.NoError(t, err)
 
 		require.Equal(
 			t,
-			review,
+			expected,
 			actual,
 			"expected to have gotten back the same item as was originally saved",
 		)
@@ -171,17 +185,16 @@ func TestService_AddContributingCause(t *testing.T) {
 	t.Run("when both review and contributing cause are known bind it", func(t *testing.T) {
 		store := new(storageMock)
 		store.Test(t)
-		store.On("Get", mock.Anything, int64(1)).Return(reviewing.Review{ID: 1}, nil)
+		review := a.Review().IsValid().IsSaved().Build()
+		store.On("Get", mock.Anything, int64(1)).Return(review, nil)
 		causeStore := new(causeStorageMock)
 		causeStore.Test(t)
 		causeStore.On("Get", mock.Anything, int64(1)).Return(normalized.ContributingCause{ID: 1}, nil)
-		storedReview := reviewing.Review{
-			ID: 1,
-			ContributingCauses: []reviewing.ReviewCause{{ // make sure we create the ReviewCause correctly and attach it
-				Cause: normalized.ContributingCause{ID: 1},
-				Why:   "because",
-			}},
-		}
+		storedReview := review
+		storedReview.ContributingCauses = append(storedReview.ContributingCauses, reviewing.ReviewCause{ // make sure we create the ReviewCause correctly and attach it
+			Cause: normalized.ContributingCause{ID: 1},
+			Why:   "because",
+		})
 		store.On("Save", mock.Anything, storedReview).Return(storedReview, nil)
 		service := reviewing.NewService(store, causeStore)
 		ctx := context.Background()
