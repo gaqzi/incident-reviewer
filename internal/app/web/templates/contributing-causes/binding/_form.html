@@ -1,8 +1,14 @@
-{{ define "bind-contributing-cause-form" }}
-<form method="post" action="/reviews/{{ .Review.ID }}/contributing-causes" class="new">
+<form method="post" action="/reviews/{{ .Data.Review.ID }}/contributing-causes" class="new">
+    <ul>
+        {{ template "bind-contributing-cause-options" .Data }}
 
-    {{ template "bind-contributing-cause-fields" . }}
+        <li>
+            <label>
+                Why this cause applies to this incident:
+                <textarea name="why" required>{{ .Data.ContributingCause.Why }}</textarea>
+            </label>
+        </li>
+    </ul>
 
     <button class="bind" type="submit">Add!</button>
 </form>
-{{ end }}

@@ -233,8 +233,7 @@ func (a *reviewsHandler) Show(w http.ResponseWriter, r *http.Request) {
 		With(
 			htmx.NewComponent("templates/reviews/_contributing-causes.html").
 				FS(templates).
-				Attach("templates/contributing-causes/binding/_fields.html").
-				Attach("templates/contributing-causes/binding/_form.html"),
+				With(bindContributingCause()),
 			"ContributingCauses",
 		).
 		Wrap(baseContent(), "Body")

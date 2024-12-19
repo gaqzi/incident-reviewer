@@ -2,10 +2,8 @@ package web
 
 import (
 	"context"
-	"encoding/json"
 	"log/slog"
 	"net/http"
-	"net/url"
 
 	"github.com/donseba/go-htmx"
 	"github.com/go-chi/chi/v5"
@@ -15,6 +13,7 @@ import (
 
 type causeService interface {
 	Save(ctx context.Context, cause contributing.Cause) (contributing.Cause, error)
+	All(ctx context.Context) ([]contributing.Cause, error)
 }
 
 type causesHandler struct {
@@ -81,30 +80,25 @@ func (a *causesHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	target := r.Header.Get("hx-target")
-	location := r.Header.Get("hx-current-url")
-	locationURL, err := url.Parse(location)
+	causes, err := a.service.All(r.Context())
 	if err != nil {
-		slog.Error("failed to parse location URL for cause success creation redirect", "error", err)
+		slog.Error("failed to fetch all contributing causes after proposing new cause", "error", err)
 		h.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	q := locationURL.Query()
-	q.Add("selectedCause", cause.ID.String())
-	locationURL.RawQuery = q.Encode()
-	location = locationURL.String()
-	redirect := map[string]string{
-		"target": "#" + target,
-		"select": "#" + target,
-		"path":   location,
-	}
-	slog.Info("preparing to redirect", "url", location)
-	data, err := json.Marshal(redirect)
+
+	page := htmx.NewComponent("templates/contributing-causes/binding/_only-options.html").
+		FS(templates).
+		Attach("templates/contributing-causes/binding/_causes-options.html").
+		SetData(map[string]any{
+			"SelectedCauseID":    cause.ID.String(),
+			"ContributingCauses": convertContributingCauseToHttpObjects(causes),
+		})
+
+	_, err = h.Render(r.Context(), page)
 	if err != nil {
-		slog.Error("failed to encode json for cause success creation redirect", "error", err)
+		slog.Error("failed to render partial contributing-causes/binding/", "error", err)
 		h.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	h.Header().Add(string(htmx.HXLocation), string(data))
-	h.WriteHeader(http.StatusCreated) // TODO: handle when it's not HTMX boosted
 }
