@@ -29,7 +29,7 @@ type reviewingService interface {
 	All(ctx context.Context) ([]reviewing.Review, error)
 
 	// AddContributingCause validates that the cause can be added to the review.
-	AddContributingCause(ctx context.Context, reviewID uuid.UUID, causeID uuid.UUID, why string) error
+	AddContributingCause(ctx context.Context, reviewID uuid.UUID, causeID uuid.UUID, reviewCause reviewing.ReviewCause) error
 }
 
 type causeAller interface {
@@ -101,15 +101,17 @@ type ReviewCauseForm struct {
 	ReviewID            uuid.UUID `form:"reviewID"`
 	ContributingCauseID uuid.UUID `form:"contributingCauseID"`
 	Why                 string    `form:"why"`
+	IsProximalCause     bool      `form:"isProximalCause"`
 
 	UpdatedAt time.Time
 	CreatedAt time.Time
 }
 
 type ReviewCauseBasic struct {
-	Name     string
-	Why      string
-	Category string
+	Name            string
+	Why             string
+	Category        string
+	IsProximalCause bool
 }
 
 type ContributingCauseBasic struct {
@@ -349,7 +351,12 @@ func (a *reviewsHandler) CreateContributingCause(w http.ResponseWriter, r *http.
 		return
 	}
 
-	if err := a.service.AddContributingCause(r.Context(), reviewID, causeBasic.ContributingCauseID, causeBasic.Why); err != nil {
+	if err := a.service.AddContributingCause(
+		r.Context(),
+		reviewID,
+		causeBasic.ContributingCauseID,
+		reviewing.ReviewCause{Why: causeBasic.Why, IsProximalCause: causeBasic.IsProximalCause},
+	); err != nil {
 		slog.Error("failed to create contributing cause", "reviewID", reviewID, "error", err)
 		h.WriteHeader(http.StatusBadRequest)
 		return
@@ -428,9 +435,10 @@ func convertToHttpObject(r reviewing.Review) ReviewBasic {
 	causes := make([]ReviewCauseBasic, 0, len(r.ContributingCauses))
 	for _, cause := range r.ContributingCauses {
 		causes = append(causes, ReviewCauseBasic{
-			Name:     cause.Cause.Name,
-			Why:      cause.Why,
-			Category: cause.Cause.Category,
+			Name:            cause.Cause.Name,
+			Why:             cause.Why,
+			Category:        cause.Cause.Category,
+			IsProximalCause: cause.IsProximalCause,
 		})
 	}
 

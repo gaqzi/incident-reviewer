@@ -91,3 +91,13 @@ func (b BuilderReview) Modify(mods ...func(r *reviewing.Review)) BuilderReview {
 
 	return b
 }
+
+func (b BuilderReview) WithContributingCause(rc reviewing.ReviewCause) BuilderReview {
+	r, err := b.r.AddContributingCause(rc)
+	if err != nil {
+		panic("failed to add contributing cause: " + err.Error())
+	}
+	b.r = r
+
+	return b
+}

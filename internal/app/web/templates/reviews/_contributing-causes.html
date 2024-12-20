@@ -3,7 +3,9 @@
 
     <ul class="listing">
         {{ range .Data.BoundContributingCauses }}
-        <li><span class="contributingCause">{{ .Name }}</span> — <span class="why">{{ .Why }}</span></li>
+        <li{{ if .IsProximalCause }} class="proximalCause"{{ end }}>
+            <span class="contributingCause">{{ .Name }}</span> — <span class="why">{{ .Why }}</span>
+        </li>
         {{ end }}
     </ul>
 </contributing-causes>

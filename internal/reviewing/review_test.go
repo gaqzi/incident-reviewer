@@ -206,7 +206,7 @@ func TestService_AddContributingCause(t *testing.T) {
 		service := reviewing.NewService(store, nil)
 		ctx := context.Background()
 
-		actual := service.AddContributingCause(ctx, id, uuid.Nil, "because")
+		actual := service.AddContributingCause(ctx, id, uuid.Nil, reviewing.ReviewCause{Why: "because", IsProximalCause: false})
 
 		require.Error(t, actual, "expected an error since we haven't stored any reviews")
 		require.ErrorContainsf(t, actual, "failed to get review:", "so we know we got the correct error")
@@ -223,7 +223,7 @@ func TestService_AddContributingCause(t *testing.T) {
 		service := reviewing.NewService(store, causeStore)
 		ctx := context.Background()
 
-		actual := service.AddContributingCause(ctx, id, uuid.Nil, "because!")
+		actual := service.AddContributingCause(ctx, id, uuid.Nil, reviewing.ReviewCause{Why: "because!", IsProximalCause: false})
 
 		require.Error(t, actual, "expected an error when invalid cause provided")
 		require.ErrorContains(t, actual, "failed to get contributing cause:")
@@ -236,19 +236,55 @@ func TestService_AddContributingCause(t *testing.T) {
 		store.On("Get", mock.Anything, review.ID).Return(review, nil)
 		causeStore := new(causeStorageMock)
 		causeStore.Test(t)
-		cause := a.ContributingCause().Build()
+		cause := a.ContributingCause().WithID(uuid.Nil).Build() // Intentional set the nil UUID to make sure we look up what we're saying and not binding otherwise
 		causeStore.On("Get", mock.Anything, uuid.Nil).Return(cause, nil)
 		storedReview := review
 		storedReview.ContributingCauses = append(storedReview.ContributingCauses, reviewing.ReviewCause{ // make sure we create the ReviewCause correctly and attach it
-			Cause: cause,
-			Why:   "because",
+			Cause:           cause,
+			Why:             "because",
+			IsProximalCause: false,
 		})
 		store.On("Save", mock.Anything, mock.IsType(reviewing.Review{})).Return(storedReview, nil)
 		service := reviewing.NewService(store, causeStore)
 		ctx := context.Background()
 
-		actual := service.AddContributingCause(ctx, review.ID, uuid.Nil, "because")
+		actual := service.AddContributingCause(ctx, review.ID, uuid.Nil, reviewing.ReviewCause{
+			Cause:           a.ContributingCause().Build(), // pass in a cause but only bind by the ID passed in to look up
+			Why:             "because",
+			IsProximalCause: false,
+		})
 		require.NoError(t, actual, "expected to have bound the cause to the review successfully")
+	})
+
+	t.Run("ensure we add the contributing cause through the aggregate root", func(t *testing.T) {
+		// This test is here just because I'm mixing behavior and collaboration in the service,
+		// and because I can't stub out the Review for tests. So make sure _one_ behavior from the validation is here.
+		ctx := context.Background()
+		cause := reviewing.ReviewCause{Cause: a.ContributingCause().Build(), Why: "because"}
+		store := new(storageMock)
+		store.Test(t)
+		// First time, no causes added
+		store.On("Get", mock.Anything, mock.Anything).Return(a.Review().Build(), nil).Once()
+		// Second time, the cause has been saved, urgh, this test is messy AF
+		store.On("Get", mock.Anything, mock.Anything).
+			Return(
+				a.Review().
+					WithContributingCause(cause).
+					Build(),
+				nil,
+			).
+			Once()
+		store.On("Save", mock.Anything, mock.Anything).Once().Return(a.Review().Build(), nil)
+		causeStore := new(causeStorageMock)
+		causeStore.Test(t)
+		causeStore.On("Get", mock.Anything, mock.Anything).Return(a.ContributingCause().Build(), nil)
+		service := reviewing.NewService(store, causeStore)
+
+		actual := service.AddContributingCause(ctx, uuid.Nil, uuid.Nil, cause)
+		require.NoError(t, actual)
+
+		actual = service.AddContributingCause(ctx, uuid.Nil, uuid.Nil, cause)
+		require.ErrorContains(t, actual, "failed to add contributing cause:")
 	})
 }
 
@@ -326,4 +362,66 @@ func TestReview_Update(t *testing.T) {
 			require.Equal(t, tc.expected, actual)
 		})
 	}
+}
+
+func TestReview_AddContributingCause(t *testing.T) {
+	t.Run("adds the contributing cause to the list of contributing causes", func(t *testing.T) {
+		review := a.Review().Build()
+		cause := a.ContributingCause().Build()
+		reviewCause := reviewing.ReviewCause{Cause: cause, Why: "because", IsProximalCause: false}
+
+		review, err := review.AddContributingCause(reviewCause)
+
+		require.NoError(t, err)
+		require.Equal(t, []reviewing.ReviewCause{reviewCause}, review.ContributingCauses, "expected the new bonud cause to be the only one in the list")
+	})
+
+	t.Run("returns an error when the same cause is added with the same why", func(t *testing.T) {
+		for _, tc := range []struct {
+			description string
+			why         string
+		}{
+			{"literally the same", "because"},
+			{"why with lots of surrounding spaces", "\t because\n \t"},
+			{"why with different cases", "bEcAuSe"},
+		} {
+			t.Run(tc.description, func(t *testing.T) {
+				review := a.Review().Build()
+				cause := a.ContributingCause().Build()
+				reviewCause := reviewing.ReviewCause{Cause: cause, Why: "because", IsProximalCause: false}
+
+				review, err := review.AddContributingCause(reviewCause)
+				require.NoError(t, err)
+
+				reviewCause.Why = tc.why
+				review, err = review.AddContributingCause(reviewCause)
+				require.Error(t, err)
+				require.ErrorContains(t, err, "cannot bind contributing cause with the same why: "+tc.why)
+			})
+		}
+	})
+
+	t.Run("when setting the proximal cause sets all previously stored as not proximal", func(t *testing.T) {
+		review := a.Review().Build()
+		cause := a.ContributingCause().Build()
+		cause2 := a.ContributingCause().WithID(uuid.Nil).Build()
+
+		review, err := review.AddContributingCause(reviewing.ReviewCause{Cause: cause, Why: "because", IsProximalCause: true})
+		require.NoError(t, err)
+		require.True(t, review.ContributingCauses[0].IsProximalCause)
+
+		review, err = review.AddContributingCause(reviewing.ReviewCause{Cause: cause2, Why: "why not?", IsProximalCause: true})
+		require.NoError(t, err)
+
+		proximalCauseMap := map[string]bool{}
+		for _, cause := range review.ContributingCauses {
+			proximalCauseMap[cause.Cause.ID.String()] = cause.IsProximalCause
+		}
+		require.Equal(
+			t,
+			map[string]bool{cause.ID.String(): false, cause2.ID.String(): true},
+			proximalCauseMap,
+			"expected the second cause to be marked as proximal and the first to have been unmarked",
+		)
+	})
 }
