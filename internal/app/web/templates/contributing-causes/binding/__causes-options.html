@@ -1,5 +1,5 @@
 {{ define "bind-contributing-cause-options" }}
-<li id="causes" hx-target="this" hx-replace-url="false">
+<li id="causes" hx-target="this" hx-swap="innerHTML" hx-replace-url="false">
     <label>
         <dfn title="A part of why we had an incident">Contributing cause</dfn>:
         {{ $selectedID := .SelectedCauseID }}
