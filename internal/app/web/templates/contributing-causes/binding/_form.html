@@ -8,6 +8,12 @@
                 <textarea name="why" required>{{ .Data.ContributingCause.Why }}</textarea>
             </label>
         </li>
+        <li>
+            <label>
+                Is this the <defn title="the cause closest to what broke, also often known as the root cause">proximal cause</defn>?
+                <input type="checkbox" name="isProximalCause" {{ if .Data.ContributingCause.IsProximalCause }}checked{{ end }}>
+            </label>
+        </li>
     </ul>
 
     <button class="bind" type="submit">Add!</button>

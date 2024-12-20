@@ -3,6 +3,7 @@ package reviewing
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -61,9 +62,35 @@ func (r Review) updateTimestamps() Review {
 	return r
 }
 
+// AddContributingCause validates the rc for uniqueness and ensures only one proximal cause at a time.
+func (r Review) AddContributingCause(rc ReviewCause) (Review, error) {
+	// If the new ReviewCause is proximal we need to ensure the other ones aren't, so unset when we're iterating over.
+	unsetProximal := func(c ReviewCause) ReviewCause { return c }
+	if rc.IsProximalCause {
+		unsetProximal = func(c ReviewCause) ReviewCause {
+			c.IsProximalCause = false
+			return c
+		}
+	}
+
+	for i, c := range r.ContributingCauses {
+		if c.Cause.ID == rc.Cause.ID &&
+			strings.EqualFold(strings.TrimSpace(c.Why), strings.TrimSpace(rc.Why)) {
+			return r, fmt.Errorf("cannot bind contributing cause with the same why: " + rc.Why)
+		}
+
+		r.ContributingCauses[i] = unsetProximal(c)
+	}
+
+	r.ContributingCauses = append(r.ContributingCauses, rc)
+
+	return r, nil
+}
+
 type ReviewCause struct {
-	Cause contributing.Cause `validate:"required"`
-	Why   string             `validate:"required"`
+	Cause           contributing.Cause `validate:"required"`
+	Why             string             `validate:"required"`
+	IsProximalCause bool
 }
 
 type causeStore interface {
@@ -115,7 +142,7 @@ func (s *Service) All(ctx context.Context) ([]Review, error) {
 	return ret, nil
 }
 
-func (s *Service) AddContributingCause(ctx context.Context, reviewID uuid.UUID, causeID uuid.UUID, why string) error {
+func (s *Service) AddContributingCause(ctx context.Context, reviewID uuid.UUID, causeID uuid.UUID, reviewCause ReviewCause) error {
 	review, err := s.reviewStore.Get(ctx, reviewID)
 	if err != nil {
 		return fmt.Errorf("failed to get review: %w", err)
@@ -126,10 +153,11 @@ func (s *Service) AddContributingCause(ctx context.Context, reviewID uuid.UUID, 
 		return fmt.Errorf("failed to get contributing cause: %w", err)
 	}
 
-	review.ContributingCauses = append(review.ContributingCauses, ReviewCause{
-		Cause: cause,
-		Why:   why,
-	})
+	reviewCause.Cause = cause
+	review, err = review.AddContributingCause(reviewCause)
+	if err != nil {
+		return fmt.Errorf("failed to add contributing cause: %w", err)
+	}
 
 	_, err = s.Save(ctx, review)
 	if err != nil {
