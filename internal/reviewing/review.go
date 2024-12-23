@@ -2,6 +2,7 @@ package reviewing
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -9,7 +10,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/gaqzi/incident-reviewer/internal/normalized/contributing"
-	"github.com/gaqzi/incident-reviewer/internal/platform/validate"
+	"github.com/gaqzi/incident-reviewer/internal/platform/action"
 )
 
 type Review struct {
@@ -76,7 +77,7 @@ func (r Review) AddContributingCause(rc ReviewCause) (Review, error) {
 	for i, c := range r.ContributingCauses {
 		if c.Cause.ID == rc.Cause.ID &&
 			strings.EqualFold(strings.TrimSpace(c.Why), strings.TrimSpace(rc.Why)) {
-			return r, fmt.Errorf("cannot bind contributing cause with the same why: " + rc.Why)
+			return r, errors.New("cannot bind contributing cause with the same why: " + rc.Why)
 		}
 
 		r.ContributingCauses[i] = unsetProximal(c)
@@ -100,23 +101,47 @@ type causeStore interface {
 type Service struct {
 	reviewStore Storage
 	causeStore  causeStore
+	action      *action.Mapper
 }
 
-func NewService(reviewStore Storage, causeStore causeStore) *Service {
-	return &Service{
+type Option func(s *Service)
+
+func WithActionMapper(mapper *action.Mapper) Option {
+	return func(s *Service) {
+		s.action = mapper
+	}
+}
+
+func NewService(reviewStore Storage, causeStore causeStore, opts ...Option) *Service {
+	s := Service{
 		reviewStore: reviewStore,
 		causeStore:  causeStore,
+		action:      reviewServiceActions(),
 	}
+
+	for _, opt := range opts {
+		opt(&s)
+	}
+
+	return &s
 }
 
 func (s *Service) Save(ctx context.Context, review Review) (Review, error) {
-	if err := validate.Struct(ctx, review); err != nil {
-		return Review{}, fmt.Errorf("failed to validate review: %w", err)
+	doer, err := s.action.Get("Save")
+	if err != nil {
+		return review, fmt.Errorf("failed to get action for save: %w", err)
+	}
+	do, ok := doer.(func(context.Context, Review) (Review, error))
+	if !ok {
+		return review, errors.New("action for save doesn't match")
 	}
 
-	review = review.updateTimestamps()
+	review, err = do(ctx, review)
+	if err != nil {
+		return review, fmt.Errorf("pre-save action failed: %w", err)
+	}
 
-	review, err := s.reviewStore.Save(ctx, review)
+	review, err = s.reviewStore.Save(ctx, review)
 	if err != nil {
 		return Review{}, fmt.Errorf("failed to save review in storage: %w", err)
 	}
@@ -153,10 +178,18 @@ func (s *Service) AddContributingCause(ctx context.Context, reviewID uuid.UUID, 
 		return fmt.Errorf("failed to get contributing cause: %w", err)
 	}
 
-	reviewCause.Cause = cause
-	review, err = review.AddContributingCause(reviewCause)
+	doer, err := s.action.Get("AddContributingCause")
 	if err != nil {
-		return fmt.Errorf("failed to add contributing cause: %w", err)
+		return fmt.Errorf("failed to get action for adding contributing cause: %w", err)
+	}
+	do, ok := doer.(func(Review, contributing.Cause, ReviewCause) (Review, error))
+	if !ok {
+		return fmt.Errorf("failed to cast action for adding contributing cause: %w", err)
+	}
+
+	review, err = do(review, cause, reviewCause)
+	if err != nil {
+		return fmt.Errorf("failed to add contributing cause to review: %w", err)
 	}
 
 	_, err = s.Save(ctx, review)

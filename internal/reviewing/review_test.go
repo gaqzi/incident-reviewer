@@ -5,12 +5,12 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	"github.com/gaqzi/incident-reviewer/internal/normalized/contributing"
+	"github.com/gaqzi/incident-reviewer/internal/platform/action"
 	"github.com/gaqzi/incident-reviewer/internal/reviewing"
 	"github.com/gaqzi/incident-reviewer/test/a"
 )
@@ -44,6 +44,19 @@ func (m *causeStorageMock) Get(ctx context.Context, id uuid.UUID) (contributing.
 }
 
 func TestService_Save(t *testing.T) {
+	t.Run("wraps any error from collaborating with action mapper", func(t *testing.T) {
+		mapper := &action.Mapper{}
+		mapper.Add("Save", func(_ context.Context, review reviewing.Review) (reviewing.Review, error) {
+			return review, errors.New("uh-oh")
+		})
+		service := reviewing.NewService(nil, nil, reviewing.WithActionMapper(mapper))
+		ctx := context.Background()
+
+		_, actual := service.Save(ctx, reviewing.Review{})
+
+		require.ErrorContains(t, actual, "pre-save action failed:")
+	})
+
 	t.Run("returns the error from the underlying storage it errors", func(t *testing.T) {
 		store := new(storageMock)
 		store.Test(t)
@@ -76,60 +89,6 @@ func TestService_Save(t *testing.T) {
 			actual,
 			"expected the returned version from storage to be returned",
 		)
-	})
-
-	t.Run("validates the Review and returns an error when validation fails", func(t *testing.T) {
-		service := reviewing.NewService(nil, nil)
-		ctx := context.Background()
-
-		_, actual := service.Save(ctx, reviewing.Review{})
-
-		var errs validator.ValidationErrors
-		require.ErrorAs(t, actual, &errs, "expected an empty review to be invalid and have the invalid fields returned")
-		require.ErrorContains(t, actual, "failed to validate review:")
-		require.GreaterOrEqual(t, len(errs), 8, "expected at minimum 8 errors to match the fields at the time of writing")
-	})
-
-	t.Run("it calls Review.updateTimestamps() to set the times when saving", func(t *testing.T) {
-		t.Run("on a new object it sets created at and updated at", func(t *testing.T) {
-			store := new(storageMock)
-			store.Test(t)
-			store.
-				On("Save", mock.Anything, mock.MatchedBy(func(r reviewing.Review) bool {
-					// Ensure that we've set Created and Updated At and that they're the same
-					// The exact values aren't important for our test, just that they've been set.
-					//
-					// XXX: Is this a bad design since I'm testing that some collaboration happened,
-					// but I don't know the full values because it's on the aggregate root? This is
-					// the best I could come up with for now… 😅
-					return !r.CreatedAt.IsZero() && !r.UpdatedAt.IsZero() && r.CreatedAt.Equal(r.UpdatedAt)
-				})).
-				Return(a.Review().Build(), nil)
-			service := reviewing.NewService(store, nil)
-			ctx := context.Background()
-
-			actual, err := service.Save(ctx, a.Review().IsNotSaved().Build())
-
-			require.NoError(t, err)
-			require.Equal(t, a.Review().Build(), actual, "expected to have gotten back the saved object with no further changes")
-		})
-
-		t.Run("on a previously saved object (i.e. CreatedAt set) it only updated UpdatedAt", func(t *testing.T) {
-			store := new(storageMock)
-			store.Test(t)
-			store.
-				On("Save", mock.Anything, mock.MatchedBy(func(r reviewing.Review) bool {
-					// Ensure CreatedAt and UpdatedAt are different
-					return !r.CreatedAt.Equal(r.UpdatedAt)
-				})).
-				Return(a.Review().Build(), nil)
-			service := reviewing.NewService(store, nil)
-			ctx := context.Background()
-
-			_, err := service.Save(ctx, a.Review().IsSaved().Build())
-
-			require.NoError(t, err)
-		})
 	})
 }
 
@@ -229,6 +188,26 @@ func TestService_AddContributingCause(t *testing.T) {
 		require.ErrorContains(t, actual, "failed to get contributing cause:")
 	})
 
+	t.Run("it returns any errors when adding the cause to the review", func(t *testing.T) {
+		ctx := context.Background()
+		cause := reviewing.ReviewCause{Cause: a.ContributingCause().Build(), Why: "because"}
+		store := new(storageMock)
+		store.Test(t)
+		store.On("Get", mock.Anything, mock.Anything).Return(a.Review().Build(), nil)
+		causeStore := new(causeStorageMock)
+		causeStore.Test(t)
+		causeStore.On("Get", mock.Anything, mock.Anything).Return(a.ContributingCause().Build(), nil)
+		mapper := action.Mapper{}
+		mapper.Add("AddContributingCause", func(r reviewing.Review, _ contributing.Cause, _ reviewing.ReviewCause) (reviewing.Review, error) {
+			return r, errors.New("uh-oh")
+		})
+		service := reviewing.NewService(store, causeStore, reviewing.WithActionMapper(&mapper))
+
+		actual := service.AddContributingCause(ctx, uuid.Nil, uuid.Nil, cause)
+
+		require.ErrorContains(t, actual, "failed to add contributing cause to review:")
+	})
+
 	t.Run("when both review and contributing cause are known bind it", func(t *testing.T) {
 		store := new(storageMock)
 		store.Test(t)
@@ -238,14 +217,22 @@ func TestService_AddContributingCause(t *testing.T) {
 		causeStore.Test(t)
 		cause := a.ContributingCause().WithID(uuid.Nil).Build() // Intentional set the nil UUID to make sure we look up what we're saying and not binding otherwise
 		causeStore.On("Get", mock.Anything, uuid.Nil).Return(cause, nil)
-		storedReview := review
-		storedReview.ContributingCauses = append(storedReview.ContributingCauses, reviewing.ReviewCause{ // make sure we create the ReviewCause correctly and attach it
-			Cause:           cause,
-			Why:             "because",
-			IsProximalCause: false,
-		})
-		store.On("Save", mock.Anything, mock.IsType(reviewing.Review{})).Return(storedReview, nil)
-		service := reviewing.NewService(store, causeStore)
+		toStoreReview := review
+		toStoreReview.ContributingCauses = append(toStoreReview.ContributingCauses, reviewing.ReviewCause{})
+		mapper := action.Mapper{}
+		mapper.
+			Add("AddContributingCause", func(r reviewing.Review, _ contributing.Cause, _ reviewing.ReviewCause) (reviewing.Review, error) {
+				return toStoreReview, nil // return the review that we want to pass to the save
+			}).
+			Add("Save", func(_ context.Context, r reviewing.Review) (reviewing.Review, error) {
+				return r, nil
+			})
+		store.
+			On("Save", mock.Anything, mock.MatchedBy(func(r reviewing.Review) bool {
+				return len(r.ContributingCauses) == 1 // TODO: replace me when Save also has the action mapper
+			})).
+			Return(toStoreReview, nil)
+		service := reviewing.NewService(store, causeStore, reviewing.WithActionMapper(&mapper))
 		ctx := context.Background()
 
 		actual := service.AddContributingCause(ctx, review.ID, uuid.Nil, reviewing.ReviewCause{
@@ -256,36 +243,6 @@ func TestService_AddContributingCause(t *testing.T) {
 		require.NoError(t, actual, "expected to have bound the cause to the review successfully")
 	})
 
-	t.Run("ensure we add the contributing cause through the aggregate root", func(t *testing.T) {
-		// This test is here just because I'm mixing behavior and collaboration in the service,
-		// and because I can't stub out the Review for tests. So make sure _one_ behavior from the validation is here.
-		ctx := context.Background()
-		cause := reviewing.ReviewCause{Cause: a.ContributingCause().Build(), Why: "because"}
-		store := new(storageMock)
-		store.Test(t)
-		// First time, no causes added
-		store.On("Get", mock.Anything, mock.Anything).Return(a.Review().Build(), nil).Once()
-		// Second time, the cause has been saved, urgh, this test is messy AF
-		store.On("Get", mock.Anything, mock.Anything).
-			Return(
-				a.Review().
-					WithContributingCause(cause).
-					Build(),
-				nil,
-			).
-			Once()
-		store.On("Save", mock.Anything, mock.Anything).Once().Return(a.Review().Build(), nil)
-		causeStore := new(causeStorageMock)
-		causeStore.Test(t)
-		causeStore.On("Get", mock.Anything, mock.Anything).Return(a.ContributingCause().Build(), nil)
-		service := reviewing.NewService(store, causeStore)
-
-		actual := service.AddContributingCause(ctx, uuid.Nil, uuid.Nil, cause)
-		require.NoError(t, actual)
-
-		actual = service.AddContributingCause(ctx, uuid.Nil, uuid.Nil, cause)
-		require.ErrorContains(t, actual, "failed to add contributing cause:")
-	})
 }
 
 func TestReview_Update(t *testing.T) {
@@ -394,7 +351,7 @@ func TestReview_AddContributingCause(t *testing.T) {
 				require.NoError(t, err)
 
 				reviewCause.Why = tc.why
-				review, err = review.AddContributingCause(reviewCause)
+				_, err = review.AddContributingCause(reviewCause)
 				require.Error(t, err)
 				require.ErrorContains(t, err, "cannot bind contributing cause with the same why: "+tc.why)
 			})
