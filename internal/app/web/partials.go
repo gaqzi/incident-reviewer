@@ -39,6 +39,7 @@ func contributingCausesComponent(reviewID uuid.UUID, ccs []contributing.Cause, b
 			),
 			"BindContributingCause",
 		).
+		Attach("templates/reviews/__contributing-cause-bound-li.html").
 		AddData("BoundContributingCauses", boundCauses).
 		AddData("ReviewID", reviewID)
 }

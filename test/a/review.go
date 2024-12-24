@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/gaqzi/incident-reviewer/internal/normalized/contributing"
 	"github.com/gaqzi/incident-reviewer/internal/reviewing"
 )
 
@@ -92,12 +93,63 @@ func (b BuilderReview) Modify(mods ...func(r *reviewing.Review)) BuilderReview {
 	return b
 }
 
-func (b BuilderReview) WithContributingCause(rc reviewing.ReviewCause) BuilderReview {
-	r, err := b.r.AddContributingCause(rc)
-	if err != nil {
-		panic("failed to add contributing cause: " + err.Error())
+func (b BuilderReview) WithContributingCause(rcs ...reviewing.ReviewCause) BuilderReview {
+	if len(rcs) == 0 {
+		rcs = append(rcs, ReviewCause().Build())
 	}
-	b.r = r
+
+	for _, rc := range rcs {
+		r, err := b.r.AddContributingCause(rc)
+		if err != nil {
+			panic("failed to add contributing cause: " + err.Error())
+		}
+		b.r = r
+	}
 
 	return b
+}
+
+type BuilderReviewCause struct {
+	rc reviewing.ReviewCause
+}
+
+func ReviewCause() BuilderReviewCause {
+	return BuilderReviewCause{}.
+		IsValid()
+}
+
+func (b BuilderReviewCause) WithID(id uuid.UUID) BuilderReviewCause {
+	b.rc.ID = id
+
+	return b
+}
+
+func (b BuilderReviewCause) WithCause(c contributing.Cause) BuilderReviewCause {
+	b.rc.Cause = c
+
+	return b
+}
+
+func (b BuilderReviewCause) WithWhy(s string) BuilderReviewCause {
+	b.rc.Why = s
+
+	return b
+}
+
+func (b BuilderReviewCause) IsValid() BuilderReviewCause {
+	b.rc.ID = uuid.MustParse("0193f6e0-a83b-71aa-a712-b0f7e0521108")
+	b.rc.Cause = ContributingCause().Build()
+	b.rc.Why = "We rely on basic internet infrastructure like everyone else"
+
+	return b
+}
+
+func (b BuilderReviewCause) WithIsProximalCause(tf bool) BuilderReviewCause {
+	b.rc.IsProximalCause = tf
+
+	return b
+}
+
+func (b BuilderReviewCause) Build() reviewing.ReviewCause {
+	return b.rc
 }

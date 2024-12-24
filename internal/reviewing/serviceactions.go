@@ -22,6 +22,10 @@ func reviewServiceActions() *action.Mapper {
 		return r.AddContributingCause(rc)
 	})
 
+	m.Add("UpdateBoundContributingCause", func(r Review, o ReviewCause) (Review, error) {
+		return r.UpdateBoundContributingCause(o)
+	})
+
 	m.Add("Save", func(ctx context.Context, r Review) (Review, error) {
 		if err := validate.Struct(ctx, r); err != nil {
 			return r, fmt.Errorf("failed to validate review: %w", err)

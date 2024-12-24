@@ -242,7 +242,129 @@ func TestService_AddContributingCause(t *testing.T) {
 		})
 		require.NoError(t, actual, "expected to have bound the cause to the review successfully")
 	})
+}
 
+func TestService_GetBoundContributingCause(t *testing.T) {
+	t.Run("when the review doesn't exist it returns an error", func(t *testing.T) {
+		id := uuid.Must(uuid.NewV7())
+		store := new(storageMock)
+		store.Test(t)
+		store.On("Get", mock.Anything, id).Return(reviewing.Review{}, errors.New("uh-oh"))
+		service := reviewing.NewService(store, nil)
+		ctx := context.Background()
+
+		_, actual := service.GetBoundContributingCause(ctx, id, uuid.Nil)
+
+		require.ErrorContains(t, actual, "review with that id not found to relate bound contributing cause:")
+	})
+
+	t.Run("when the contributing cause hasn't been bound it returns an error", func(t *testing.T) {
+		id := uuid.Must(uuid.NewV7())
+		causeID := uuid.Must(uuid.NewV7())
+		store := new(storageMock)
+		store.Test(t)
+		store.On("Get", mock.Anything, id).Return(a.Review().Build(), nil)
+		service := reviewing.NewService(store, nil)
+		ctx := context.Background()
+
+		_, actual := service.GetBoundContributingCause(ctx, id, causeID)
+
+		require.ErrorContains(t, actual, "review doesn't have that contributing cause bound:")
+	})
+
+	t.Run("when it's found it returns the reviewing.ReviewCause", func(t *testing.T) {
+		id := uuid.Must(uuid.NewV7())
+		cause := a.ContributingCause().Build()
+		boundCause := reviewing.NewReviewCause()
+		boundCause.Cause = cause
+		store := new(storageMock)
+		store.Test(t)
+		store.On("Get", mock.Anything, id).Return(a.Review().WithContributingCause(boundCause).Build(), nil)
+		service := reviewing.NewService(store, nil)
+		ctx := context.Background()
+
+		actual, err := service.GetBoundContributingCause(ctx, id, boundCause.ID)
+
+		require.NoError(t, err)
+		require.Equal(t, boundCause, actual, "expected the matching cause added into the reviewing.Review to be returned")
+	})
+}
+
+func TestService_UpdateBoundContributingCause(t *testing.T) {
+	t.Run("when the review doesn't exist it returns an error", func(t *testing.T) {
+		store := new(storageMock)
+		store.Test(t)
+		store.On("Get", mock.Anything, mock.Anything).Return(reviewing.Review{}, errors.New("review not found"))
+		service := reviewing.NewService(store, nil)
+
+		_, err := service.UpdateBoundContributingCause(context.Background(), a.UUID(), reviewing.ReviewCause{})
+
+		require.ErrorContains(t, err, "review not found")
+	})
+
+	t.Run("when the new boundCause.Cause isn't found it returns an error", func(t *testing.T) {
+		store := new(storageMock)
+		store.Test(t)
+		review := a.Review().Build()
+		store.On("Get", mock.Anything, review.ID).Return(review, nil)
+		causeStore := new(causeStorageMock)
+		causeStore.Test(t)
+		reviewCause := a.ReviewCause().Build()
+		causeStore.On("Get", mock.Anything, reviewCause.Cause.ID).Return(contributing.Cause{}, errors.New("uh-oh"))
+		service := reviewing.NewService(store, causeStore)
+		ctx := context.Background()
+
+		_, err := service.UpdateBoundContributingCause(ctx, review.ID, reviewCause)
+
+		require.ErrorContains(t, err, "failed to get contributing cause:")
+	})
+
+	t.Run("when there is an error updating it returns an error", func(t *testing.T) {
+		store := new(storageMock)
+		store.Test(t)
+		review := a.Review().WithContributingCause().Build()
+		store.On("Get", mock.Anything, review.ID).Return(review, nil)
+		causeStore := new(causeStorageMock)
+		causeStore.Test(t)
+		cause := review.ContributingCauses[0].Cause
+		causeStore.On("Get", mock.Anything, cause.ID).Return(cause, nil)
+		updatedCause := review.ContributingCauses[0]
+		updatedCause.Why = "updated cause"
+		mapper := &action.Mapper{}
+		mapper.Add("UpdateBoundContributingCause", func(r reviewing.Review, rc reviewing.ReviewCause) (reviewing.Review, error) {
+			return reviewing.Review{}, errors.New("uh-oh")
+		})
+		service := reviewing.NewService(store, causeStore, reviewing.WithActionMapper(mapper))
+		ctx := context.Background()
+
+		_, err := service.UpdateBoundContributingCause(ctx, review.ID, updatedCause)
+
+		require.ErrorContains(t, err, "action to update bound contributing cause failed:")
+	})
+
+	t.Run("when the update is successful it returns the updated reviewing.ReviewCause", func(t *testing.T) {
+		store := new(storageMock)
+		store.Test(t)
+		review := a.Review().WithContributingCause().Build()
+		store.On("Get", mock.Anything, review.ID).Return(review, nil)
+		causeStore := new(causeStorageMock)
+		causeStore.Test(t)
+		causeStore.On("Get", mock.Anything, review.ContributingCauses[0].Cause.ID).Return(review.ContributingCauses[0].Cause, nil)
+		updatedReview := review
+		updatedReview.ContributingCauses[0].Why = "updated cause"
+		store.On("Save", mock.Anything, updatedReview).Return(updatedReview, nil)
+		mapper := &action.Mapper{}
+		mapper.Add("UpdateBoundContributingCause", func(r reviewing.Review, rc reviewing.ReviewCause) (reviewing.Review, error) { return r, nil })
+		mapper.Add("Save", func(_ context.Context, r reviewing.Review) (reviewing.Review, error) { return r, nil })
+		service := reviewing.NewService(store, causeStore, reviewing.WithActionMapper(mapper))
+		ctx := context.Background()
+
+		updatedCause := a.ReviewCause().WithWhy("updated cause").Build()
+		actual, err := service.UpdateBoundContributingCause(ctx, review.ID, updatedCause)
+
+		require.NoError(t, err)
+		require.Equal(t, updatedCause, actual)
+	})
 }
 
 func TestReview_Update(t *testing.T) {
@@ -324,13 +446,12 @@ func TestReview_Update(t *testing.T) {
 func TestReview_AddContributingCause(t *testing.T) {
 	t.Run("adds the contributing cause to the list of contributing causes", func(t *testing.T) {
 		review := a.Review().Build()
-		cause := a.ContributingCause().Build()
-		reviewCause := reviewing.ReviewCause{Cause: cause, Why: "because", IsProximalCause: false}
+		reviewCause := a.ReviewCause().Build()
 
 		review, err := review.AddContributingCause(reviewCause)
 
 		require.NoError(t, err)
-		require.Equal(t, []reviewing.ReviewCause{reviewCause}, review.ContributingCauses, "expected the new bonud cause to be the only one in the list")
+		require.Equal(t, []reviewing.ReviewCause{reviewCause}, review.ContributingCauses, "expected the new bound cause to be the only one in the list")
 	})
 
 	t.Run("returns an error when the same cause is added with the same why", func(t *testing.T) {
@@ -379,6 +500,44 @@ func TestReview_AddContributingCause(t *testing.T) {
 			map[string]bool{cause.ID.String(): false, cause2.ID.String(): true},
 			proximalCauseMap,
 			"expected the second cause to be marked as proximal and the first to have been unmarked",
+		)
+	})
+}
+
+func TestReview_UpdateBoundContributingCause(t *testing.T) {
+	t.Run("when the updated cause isn't already bound it returns an error", func(t *testing.T) {
+		review := a.Review().Build()
+		updatedCause := reviewing.ReviewCause{Cause: a.ContributingCause().Build(), Why: "new cause"}
+
+		_, err := review.UpdateBoundContributingCause(updatedCause)
+
+		require.Error(t, err)
+		require.ErrorContains(t, err, "cannot update contributing cause that isn't already bound")
+	})
+
+	t.Run("when the updated cause is updated it does it by reusing the logic of AddContributingCause", func(t *testing.T) {
+		firstCause := a.ReviewCause().Build()
+		secondCause := a.ReviewCause().
+			WithIsProximalCause(true).
+			WithCause(a.ContributingCause().WithID(a.UUID()).WithName("Something different").Build()).
+			WithID(a.UUID()).
+			Build()
+		review := a.Review().
+			WithContributingCause(firstCause).
+			WithContributingCause(secondCause).
+			Build()
+		updatedCause := a.ReviewCause().WithWhy("updated cause").WithIsProximalCause(true).Build()
+
+		actual, err := review.UpdateBoundContributingCause(updatedCause)
+
+		require.NoError(t, err)
+		secondUpdated := secondCause
+		secondUpdated.IsProximalCause = false
+		require.Equal(
+			t,
+			[]reviewing.ReviewCause{secondUpdated, updatedCause},
+			actual.ContributingCauses,
+			"expected the proximal cause to have been removed from the second cause",
 		)
 	})
 }
