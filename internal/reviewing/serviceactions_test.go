@@ -20,6 +20,7 @@ func TestActionMapper(t *testing.T) {
 			t,
 			[]string{
 				"AddContributingCause",
+				"UpdateBoundContributingCause",
 				"Save",
 			},
 			mapper.All(),
@@ -27,7 +28,7 @@ func TestActionMapper(t *testing.T) {
 		)
 	})
 
-	t.Run("AddContributingCause sets the contributing.Cause on the ReviewCause before adding it to the Review", func(t *testing.T) {
+	t.Run("AddContributingCause sets the contributing.Cause on the ReviewCause before adding it to the Review and sets a valid ID if not provided", func(t *testing.T) {
 		mapper := reviewServiceActions()
 
 		doer, err := mapper.Get("AddContributingCause")
@@ -41,7 +42,7 @@ func TestActionMapper(t *testing.T) {
 
 		require.Equal(
 			t,
-			Review{ContributingCauses: []ReviewCause{{Cause: cause}}},
+			Review{ContributingCauses: []ReviewCause{{ID: review.ContributingCauses[0].ID, Cause: cause}}},
 			review,
 			"expected the contributing cause to have been set on the ReviewCause and then added to the Review",
 		)
@@ -64,44 +65,45 @@ func TestActionMapper(t *testing.T) {
 	})
 
 	t.Run("Save updates the timestamps after successfully validating", func(t *testing.T) {
+		mapper := reviewServiceActions()
+		doer, actual := mapper.Get("Save")
+		require.NoError(t, actual)
+		do, ok := doer.(func(context.Context, Review) (Review, error))
+		require.True(t, ok)
 
-	})
-}
-
-// Why is this test here? Because it's testing something _inside_ the reviewing package and
-// this is the one test I have that operates in here. It's also why I'm not using the `a` helpers
-// because I would be causing a recursive import loop.
-func TestReview_updateTimestamps(t *testing.T) {
-	validReview := func() Review {
-		return Review{
-			ID:                  uuid.Nil,
-			URL:                 "http://example.com",
-			Title:               "example",
-			Description:         "example",
-			Impact:              "example",
-			Where:               "example",
-			ReportProximalCause: "example",
-			ReportTrigger:       "example",
+		validReview := func() Review {
+			return Review{
+				ID:                  uuid.Must(uuid.NewV7()),
+				URL:                 "http://example.com",
+				Title:               "example",
+				Description:         "example",
+				Impact:              "example",
+				Where:               "example",
+				ReportProximalCause: "example",
+				ReportTrigger:       "example",
+			}
 		}
-	}
 
-	t.Run("when timestamps are zero both are set to now", func(t *testing.T) {
-		r := validReview()
+		t.Run("when timestamps are zero both are set to now", func(t *testing.T) {
+			r := validReview()
 
-		r = r.updateTimestamps()
+			r, err := do(context.Background(), r)
 
-		require.NotZero(t, r.CreatedAt, "expected to have been set")
-		require.Equal(t, r.CreatedAt, r.UpdatedAt, "expected to have been set to the same when both are blank")
-	})
+			require.NoError(t, err)
+			require.NotZero(t, r.CreatedAt, "expected to have been set")
+			require.Equal(t, r.CreatedAt, r.UpdatedAt, "expected to have been set to the same when both are blank")
+		})
 
-	t.Run("when created at already is set then only updated at is updated", func(t *testing.T) {
-		r := validReview()
-		now := time.Now()
-		r.CreatedAt = now
+		t.Run("when created at already is set then only updated at is updated", func(t *testing.T) {
+			r := validReview()
+			now := time.Now()
+			r.CreatedAt = now
 
-		time.Sleep(time.Millisecond) // to give us some time to make the comparisons work
-		r = r.updateTimestamps()
+			time.Sleep(time.Millisecond) // to give us some time to make the comparisons work
+			r, err := do(context.Background(), r)
 
-		require.Greater(t, r.UpdatedAt.UnixNano(), r.CreatedAt.UnixNano(), "expected the updated at to be after created at")
+			require.NoError(t, err)
+			require.Greater(t, r.UpdatedAt.UnixNano(), r.CreatedAt.UnixNano(), "expected the updated at to be after created at")
+		})
 	})
 }

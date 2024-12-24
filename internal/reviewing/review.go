@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -74,6 +75,11 @@ func (r Review) AddContributingCause(rc ReviewCause) (Review, error) {
 		}
 	}
 
+	// Ensure there is always an ID set for the ReviewCause
+	if rc.ID == uuid.Nil {
+		rc.ID = uuid.Must(uuid.NewV7())
+	}
+
 	for i, c := range r.ContributingCauses {
 		if c.Cause.ID == rc.Cause.ID &&
 			strings.EqualFold(strings.TrimSpace(c.Why), strings.TrimSpace(rc.Why)) {
@@ -88,10 +94,30 @@ func (r Review) AddContributingCause(rc ReviewCause) (Review, error) {
 	return r, nil
 }
 
+func (r Review) UpdateBoundContributingCause(o ReviewCause) (Review, error) {
+	causes := slices.DeleteFunc(r.ContributingCauses, func(rc ReviewCause) bool { return rc.ID == o.ID })
+	if len(causes) == len(r.ContributingCauses) {
+		return r, errors.New("cannot update contributing cause that isn't already bound")
+	}
+
+	r.ContributingCauses = causes
+	r, err := r.AddContributingCause(o)
+	if err != nil {
+		return r, fmt.Errorf("failed to add back bound contributing cause: %w", err)
+	}
+
+	return r, nil
+}
+
 type ReviewCause struct {
+	ID              uuid.UUID
 	Cause           contributing.Cause `validate:"required"`
 	Why             string             `validate:"required"`
 	IsProximalCause bool
+}
+
+func NewReviewCause() ReviewCause {
+	return ReviewCause{ID: uuid.Must(uuid.NewV7())}
 }
 
 type causeStore interface {
@@ -198,4 +224,61 @@ func (s *Service) AddContributingCause(ctx context.Context, reviewID uuid.UUID, 
 	}
 
 	return nil
+}
+
+func (s *Service) GetBoundContributingCause(ctx context.Context, reviewID uuid.UUID, boundCauseID uuid.UUID) (ReviewCause, error) {
+	review, err := s.reviewStore.Get(ctx, reviewID)
+	if err != nil {
+		return ReviewCause{}, fmt.Errorf("review with that id not found to relate bound contributing cause: %w", err)
+	}
+
+	// Check for the bound contributing cause within the review
+	for _, boundCause := range review.ContributingCauses {
+		if boundCause.ID == boundCauseID {
+			return boundCause, nil
+		}
+	}
+
+	return ReviewCause{}, errors.New("review doesn't have that contributing cause bound: " + boundCauseID.String())
+}
+
+func (s *Service) UpdateBoundContributingCause(ctx context.Context, reviewID uuid.UUID, update ReviewCause) (ReviewCause, error) {
+	review, err := s.reviewStore.Get(ctx, reviewID)
+	if err != nil {
+		return ReviewCause{}, fmt.Errorf("failed to get review: %w", err)
+	}
+
+	newCause, err := s.causeStore.Get(ctx, update.Cause.ID)
+	if err != nil {
+		return ReviewCause{}, fmt.Errorf("failed to get contributing cause: %w", err)
+	}
+	update.Cause = newCause
+
+	doer, err := s.action.Get("UpdateBoundContributingCause")
+	if err != nil {
+		return ReviewCause{}, fmt.Errorf("failed to get action for updating bound contributing cause: %w", err)
+	}
+	do, ok := doer.(func(Review, ReviewCause) (Review, error))
+	if !ok {
+		return ReviewCause{}, fmt.Errorf("failed to cast action for updating bound contributing cause: %w", err)
+	}
+
+	review, err = do(review, update)
+	if err != nil {
+		return ReviewCause{}, fmt.Errorf("action to update bound contributing cause failed: %w", err)
+	}
+
+	updatedReview, err := s.Save(ctx, review)
+	if err != nil {
+		return ReviewCause{}, fmt.Errorf("failed to save updated review: %w", err)
+	}
+
+	// Return the updated contributing cause
+	for _, boundCause := range updatedReview.ContributingCauses {
+		if boundCause.ID == update.ID {
+			return boundCause, nil
+		}
+	}
+
+	return ReviewCause{}, errors.New("unexpected error: updated contributing cause not found")
 }

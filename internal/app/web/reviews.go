@@ -30,6 +30,8 @@ type reviewingService interface {
 
 	// AddContributingCause validates that the cause can be added to the review.
 	AddContributingCause(ctx context.Context, reviewID uuid.UUID, causeID uuid.UUID, reviewCause reviewing.ReviewCause) error
+	GetBoundContributingCause(ctx context.Context, reviewID uuid.UUID, boundCauseID uuid.UUID) (reviewing.ReviewCause, error)
+	UpdateBoundContributingCause(ctx context.Context, reviewID uuid.UUID, reviewCause reviewing.ReviewCause) (reviewing.ReviewCause, error)
 }
 
 type causeAller interface {
@@ -69,7 +71,9 @@ func ReviewsHandler(service reviewingService, causeStore causeAller) func(chi.Ro
 			r.Get("/edit", app.Edit)
 			r.Post("/edit", app.Update)
 
-			r.Post("/contributing-causes", app.CreateContributingCause)
+			r.Post("/contributing-causes", app.BindContributingCause)
+			r.Get("/contributing-causes/{boundCauseID}/edit", app.EditBoundContributingCause)
+			r.Post("/contributing-causes/{boundCauseID}/edit", app.UpdateBoundContributingCause)
 		})
 	}
 }
@@ -98,6 +102,7 @@ type ReviewBasic struct {
 }
 
 type ReviewCauseForm struct {
+	ID                  uuid.UUID `form:"id"`
 	ReviewID            uuid.UUID `form:"reviewID"`
 	ContributingCauseID uuid.UUID `form:"contributingCauseID"`
 	Why                 string    `form:"why"`
@@ -108,6 +113,7 @@ type ReviewCauseForm struct {
 }
 
 type ReviewCauseBasic struct {
+	ID              uuid.UUID
 	Name            string
 	Why             string
 	Category        string
@@ -321,7 +327,7 @@ func (a *reviewsHandler) Update(w http.ResponseWriter, r *http.Request) {
 	h.WriteHeader(http.StatusSeeOther)
 }
 
-func (a *reviewsHandler) CreateContributingCause(w http.ResponseWriter, r *http.Request) {
+func (a *reviewsHandler) BindContributingCause(w http.ResponseWriter, r *http.Request) {
 	h := a.htmx.NewHandler(w, r)
 
 	if !h.IsHxRequest() {
@@ -374,6 +380,113 @@ func (a *reviewsHandler) CreateContributingCause(w http.ResponseWriter, r *http.
 
 	httpReview := convertToHttpObject(review)
 	page := contributingCausesComponent(httpReview.ID, contributingCauses, httpReview.ContributingCauses)
+
+	a.render(r.Context(), h, page)
+}
+
+func (a *reviewsHandler) EditBoundContributingCause(w http.ResponseWriter, r *http.Request) {
+	h := a.htmx.NewHandler(w, r)
+
+	if !h.IsHxRequest() {
+		h.WriteHeader(http.StatusNotFound)
+		h.JustWriteString("not yet supported")
+	}
+
+	reviewID, err := uuid.Parse(r.PathValue("id"))
+	if err != nil {
+		slog.Error("failed to parse id for create contributing cause", "id", r.PathValue("id"), "error", err)
+		h.WriteHeader(http.StatusBadRequest)
+		h.JustWriteString("invalid id")
+		return
+	}
+
+	boundCauseID, err := uuid.Parse(r.PathValue("boundCauseID"))
+	if err != nil {
+		slog.Error("failed to parse bound cause id for editing cause", "id", r.PathValue("id"), "boundCauseID", r.PathValue("boundCauseID"), "error", err)
+		h.WriteHeader(http.StatusBadRequest)
+		h.JustWriteString("invalid id")
+		return
+	}
+
+	boundCause, err := a.service.GetBoundContributingCause(r.Context(), reviewID, boundCauseID)
+	if err != nil {
+		slog.Error("failed to get bound contributing cause", "id", reviewID, "boundCauseID", boundCauseID, "error", err)
+		h.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	allCauses, _ := a.loadContributingCauses(r.Context(), h)
+
+	page := attachToComponent(
+		htmx.NewComponent("templates/contributing-causes/binding/_form.html").FS(templates),
+		bindContributingCausesOptions(allCauses),
+	).
+		AddData("ContributingCause", toReviewCauseBasic(boundCause)).
+		AddData("boundCauseID", boundCauseID).
+		AddData("ReviewID", reviewID).
+		AddData("SelectedCauseID", boundCause.Cause.ID.String())
+
+	a.render(r.Context(), h, page)
+}
+
+func (a *reviewsHandler) UpdateBoundContributingCause(w http.ResponseWriter, r *http.Request) {
+	h := a.htmx.NewHandler(w, r)
+
+	if !h.IsHxRequest() {
+		h.WriteHeader(http.StatusNotFound)
+		h.JustWriteString("not yet supported")
+		return
+	}
+
+	reviewID, err := uuid.Parse(r.PathValue("id"))
+	if err != nil {
+		slog.Error("failed to parse id for update contributing cause", "id", r.PathValue("id"), "error", err)
+		h.WriteHeader(http.StatusBadRequest)
+		h.JustWriteString("invalid id")
+		return
+	}
+
+	boundCauseID, err := uuid.Parse(r.PathValue("boundCauseID"))
+	if err != nil {
+		slog.Error("failed to parse bound cause id for updating cause", "id", r.PathValue("id"), "boundCauseID", r.PathValue("boundCauseID"), "error", err)
+		h.WriteHeader(http.StatusBadRequest)
+		h.JustWriteString("invalid id")
+		return
+	}
+
+	if err := r.ParseForm(); err != nil {
+		slog.Error("failed to parse form", "error", err)
+		h.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	var updatedCause ReviewCauseForm
+	if err := a.decoder.Decode(&updatedCause, r.PostForm); err != nil {
+		slog.Error("failed to decode request form for updating contributing cause", "error", err)
+		h.WriteHeader(http.StatusBadRequest)
+		h.JustWriteString(err.Error())
+		return
+	}
+
+	boundCause, err := a.service.UpdateBoundContributingCause(r.Context(), reviewID, reviewing.ReviewCause{
+		ID:              boundCauseID,
+		Why:             updatedCause.Why,
+		IsProximalCause: updatedCause.IsProximalCause,
+		Cause:           contributing.Cause{ID: updatedCause.ContributingCauseID},
+	})
+	if err != nil {
+		slog.Error("failed to update bound contributing cause", "reviewID", reviewID, "boundCauseID", boundCauseID, "error", err)
+		h.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	page := htmx.NewComponent("templates/reviews/only-contributing-cause-bound-li.html").
+		FS(templates).
+		Attach("templates/reviews/__contributing-cause-bound-li.html").
+		SetData(map[string]any{
+			"ReviewID":          reviewID,
+			"ContributingCause": toReviewCauseBasic(boundCause),
+		})
 
 	a.render(r.Context(), h, page)
 }
@@ -434,12 +547,7 @@ func convertToHttpObjects(rs []reviewing.Review) []ReviewBasic {
 func convertToHttpObject(r reviewing.Review) ReviewBasic {
 	causes := make([]ReviewCauseBasic, 0, len(r.ContributingCauses))
 	for _, cause := range r.ContributingCauses {
-		causes = append(causes, ReviewCauseBasic{
-			Name:            cause.Cause.Name,
-			Why:             cause.Why,
-			Category:        cause.Cause.Category,
-			IsProximalCause: cause.IsProximalCause,
-		})
+		causes = append(causes, toReviewCauseBasic(cause))
 	}
 
 	return ReviewBasic{
@@ -456,6 +564,16 @@ func convertToHttpObject(r reviewing.Review) ReviewBasic {
 
 		CreatedAt: r.CreatedAt,
 		UpdatedAt: r.UpdatedAt,
+	}
+}
+
+func toReviewCauseBasic(cause reviewing.ReviewCause) ReviewCauseBasic {
+	return ReviewCauseBasic{
+		ID:              cause.ID,
+		Name:            cause.Cause.Name,
+		Why:             cause.Why,
+		Category:        cause.Cause.Category,
+		IsProximalCause: cause.IsProximalCause,
 	}
 }
 

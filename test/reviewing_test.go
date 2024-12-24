@@ -143,7 +143,7 @@ func TestReviewing(t *testing.T) {
 		require.NoError(t, causesForm.Locator(`button.bind[type="submit"]`).Click())
 
 		causesListing := page.Locator(`contributing-causes ul.listing`)
-		firstCause := causesListing.Locator(`li`)
+		firstCause := causesListing.Locator(`li`).First()
 		require.NoError(
 			t,
 			assert.Locator(firstCause).ToHaveCount(1),
@@ -181,6 +181,12 @@ func TestReviewing(t *testing.T) {
 			assert.Locator(causesListing.Locator(`li.proximalCause .contributingCause`)).ToHaveText("__Inconceivable__"),
 			"expected the most recently added cause to be the only one set as proximal",
 		)
+
+		// And then it's time to edit a contributing cause and see that works
+		require.NoError(t, firstCause.Locator(`button.edit`).Click())
+		require.NoError(t, firstCause.Locator(`[name="why"]`).Fill("I want to say something else now"))
+		require.NoError(t, firstCause.Locator(`button.bind[type="submit"]`).Click())
+		require.NoError(t, assert.Locator(firstCause.Locator(".why")).ToContainText("I want to say something else now"))
 
 		require.NoError(t, pw.Stop(), "failed to stop playwright")
 	})
