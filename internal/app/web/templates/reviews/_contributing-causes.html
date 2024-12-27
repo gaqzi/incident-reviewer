@@ -2,7 +2,7 @@
     {{ .Partials.BindContributingCause }}
 
     <ul class="listing">
-        {{ range .Data.BoundContributingCauses }}
+        {{ range .Data.BoundCauses }}
         <li{{ if .IsProximalCause }} class="proximalCause"{{ end }} hx-target="this" hx-swap="innerHTML">
             <form method="get" action="/reviews/{{ $.Data.ReviewID }}/contributing-causes/{{ .ID }}/edit">
                 <button class="edit" type="submit" title="Edit">✍️</button>

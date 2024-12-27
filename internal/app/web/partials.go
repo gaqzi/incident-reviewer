@@ -22,13 +22,13 @@ func bindContributingCausesOptions(ccs []contributing.Cause) htmxComponentAttach
 	return func(c htmx.RenderableComponent) htmx.RenderableComponent {
 		return c.
 			Attach("templates/contributing-causes/binding/__causes-options.html").
-			AddData("ContributingCauses", convertContributingCauseToHttpObjects(ccs))
+			AddData("BoundCauses", convertContributingCauseToHttpObjects(ccs))
 	}
 }
 
 // contributingCausesComponent constructs the <contributing-causes> template for binding and listing contributing causes to a review.
 // TODO: replace []contributing.Cause with []ContributingCauseBasic.
-func contributingCausesComponent(reviewID uuid.UUID, ccs []contributing.Cause, boundCauses []ReviewCauseBasic) htmx.RenderableComponent {
+func contributingCausesComponent(reviewID uuid.UUID, ccs []contributing.Cause, boundCauses []BoundCauseBasic) htmx.RenderableComponent {
 	return htmx.
 		NewComponent("templates/reviews/_contributing-causes.html").
 		FS(templates).
@@ -40,6 +40,6 @@ func contributingCausesComponent(reviewID uuid.UUID, ccs []contributing.Cause, b
 			"BindContributingCause",
 		).
 		Attach("templates/reviews/__contributing-cause-bound-li.html").
-		AddData("BoundContributingCauses", boundCauses).
+		AddData("BoundCauses", boundCauses).
 		AddData("ReviewID", reviewID)
 }

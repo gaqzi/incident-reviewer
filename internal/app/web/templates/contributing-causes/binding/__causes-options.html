@@ -5,7 +5,7 @@
         {{ $selectedID := .SelectedCauseID }}
         <select name="contributingCauseID" required>
             <option disabled selected>-- select --</option>
-            {{ range $category, $causes := .ContributingCauses }}
+            {{ range $category, $causes := .BoundCauses }}
             <optgroup label="{{ $category }}">
                 {{ range $causes }}
                 <option value="{{ .ID }}" {{ if eq .ID.String $selectedID }}selected{{ end }}>

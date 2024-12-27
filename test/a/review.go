@@ -93,13 +93,13 @@ func (b BuilderReview) Modify(mods ...func(r *reviewing.Review)) BuilderReview {
 	return b
 }
 
-func (b BuilderReview) WithContributingCause(rcs ...reviewing.ReviewCause) BuilderReview {
+func (b BuilderReview) WithContributingCause(rcs ...reviewing.BoundCause) BuilderReview {
 	if len(rcs) == 0 {
-		rcs = append(rcs, ReviewCause().Build())
+		rcs = append(rcs, BoundCause().Build())
 	}
 
 	for _, rc := range rcs {
-		r, err := b.r.AddContributingCause(rc)
+		r, err := b.r.BindContributingCause(rc)
 		if err != nil {
 			panic("failed to add contributing cause: " + err.Error())
 		}
@@ -109,34 +109,34 @@ func (b BuilderReview) WithContributingCause(rcs ...reviewing.ReviewCause) Build
 	return b
 }
 
-type BuilderReviewCause struct {
-	rc reviewing.ReviewCause
+type BuilderBoundCause struct {
+	rc reviewing.BoundCause
 }
 
-func ReviewCause() BuilderReviewCause {
-	return BuilderReviewCause{}.
+func BoundCause() BuilderBoundCause {
+	return BuilderBoundCause{}.
 		IsValid()
 }
 
-func (b BuilderReviewCause) WithID(id uuid.UUID) BuilderReviewCause {
+func (b BuilderBoundCause) WithID(id uuid.UUID) BuilderBoundCause {
 	b.rc.ID = id
 
 	return b
 }
 
-func (b BuilderReviewCause) WithCause(c contributing.Cause) BuilderReviewCause {
+func (b BuilderBoundCause) WithCause(c contributing.Cause) BuilderBoundCause {
 	b.rc.Cause = c
 
 	return b
 }
 
-func (b BuilderReviewCause) WithWhy(s string) BuilderReviewCause {
+func (b BuilderBoundCause) WithWhy(s string) BuilderBoundCause {
 	b.rc.Why = s
 
 	return b
 }
 
-func (b BuilderReviewCause) IsValid() BuilderReviewCause {
+func (b BuilderBoundCause) IsValid() BuilderBoundCause {
 	b.rc.ID = uuid.MustParse("0193f6e0-a83b-71aa-a712-b0f7e0521108")
 	b.rc.Cause = ContributingCause().Build()
 	b.rc.Why = "We rely on basic internet infrastructure like everyone else"
@@ -144,12 +144,12 @@ func (b BuilderReviewCause) IsValid() BuilderReviewCause {
 	return b
 }
 
-func (b BuilderReviewCause) WithIsProximalCause(tf bool) BuilderReviewCause {
+func (b BuilderBoundCause) WithIsProximalCause(tf bool) BuilderBoundCause {
 	b.rc.IsProximalCause = tf
 
 	return b
 }
 
-func (b BuilderReviewCause) Build() reviewing.ReviewCause {
+func (b BuilderBoundCause) Build() reviewing.BoundCause {
 	return b.rc
 }

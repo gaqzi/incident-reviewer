@@ -28,10 +28,10 @@ type reviewingService interface {
 	// All returns all the stored reviews with the most recent first.
 	All(ctx context.Context) ([]reviewing.Review, error)
 
-	// AddContributingCause validates that the cause can be added to the review.
-	AddContributingCause(ctx context.Context, reviewID uuid.UUID, causeID uuid.UUID, reviewCause reviewing.ReviewCause) error
-	GetBoundContributingCause(ctx context.Context, reviewID uuid.UUID, boundCauseID uuid.UUID) (reviewing.ReviewCause, error)
-	UpdateBoundContributingCause(ctx context.Context, reviewID uuid.UUID, reviewCause reviewing.ReviewCause) (reviewing.ReviewCause, error)
+	// BindContributingCause validates that the cause can be added to the review.
+	BindContributingCause(ctx context.Context, reviewID uuid.UUID, causeID uuid.UUID, boundCause reviewing.BoundCause) error
+	GetBoundContributingCause(ctx context.Context, reviewID uuid.UUID, boundCauseID uuid.UUID) (reviewing.BoundCause, error)
+	UpdateBoundContributingCause(ctx context.Context, reviewID uuid.UUID, boundCause reviewing.BoundCause) (reviewing.BoundCause, error)
 }
 
 type causeAller interface {
@@ -95,13 +95,13 @@ type ReviewBasic struct {
 	ReportTrigger       string    `form:"reportTrigger"`
 
 	// Related items that are not changed from the forms but by other calls
-	ContributingCauses []ReviewCauseBasic
+	BoundCauses []BoundCauseBasic
 
 	UpdatedAt time.Time
 	CreatedAt time.Time
 }
 
-type ReviewCauseForm struct {
+type BoundCauseForm struct {
 	ID                  uuid.UUID `form:"id"`
 	ReviewID            uuid.UUID `form:"reviewID"`
 	ContributingCauseID uuid.UUID `form:"contributingCauseID"`
@@ -112,7 +112,7 @@ type ReviewCauseForm struct {
 	CreatedAt time.Time
 }
 
-type ReviewCauseBasic struct {
+type BoundCauseBasic struct {
 	ID              uuid.UUID
 	Name            string
 	Why             string
@@ -223,7 +223,7 @@ func (a *reviewsHandler) Show(w http.ResponseWriter, r *http.Request) {
 		FS(templates).
 		AddData("Review", httpReview).
 		With(
-			contributingCausesComponent(httpReview.ID, contributingCauses, httpReview.ContributingCauses),
+			contributingCausesComponent(httpReview.ID, contributingCauses, httpReview.BoundCauses),
 			"ContributingCauses",
 		).
 		Wrap(baseContent(), "Body")
@@ -349,7 +349,7 @@ func (a *reviewsHandler) BindContributingCause(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	var causeBasic ReviewCauseForm
+	var causeBasic BoundCauseForm
 	if err := a.decoder.Decode(&causeBasic, r.PostForm); err != nil {
 		slog.Error("failed to decode basic contributing cause form", "error", err)
 		h.WriteHeader(http.StatusBadRequest)
@@ -357,11 +357,11 @@ func (a *reviewsHandler) BindContributingCause(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	if err := a.service.AddContributingCause(
+	if err := a.service.BindContributingCause(
 		r.Context(),
 		reviewID,
 		causeBasic.ContributingCauseID,
-		reviewing.ReviewCause{Why: causeBasic.Why, IsProximalCause: causeBasic.IsProximalCause},
+		reviewing.BoundCause{Why: causeBasic.Why, IsProximalCause: causeBasic.IsProximalCause},
 	); err != nil {
 		slog.Error("failed to create contributing cause", "reviewID", reviewID, "error", err)
 		h.WriteHeader(http.StatusBadRequest)
@@ -379,7 +379,7 @@ func (a *reviewsHandler) BindContributingCause(w http.ResponseWriter, r *http.Re
 	}
 
 	httpReview := convertToHttpObject(review)
-	page := contributingCausesComponent(httpReview.ID, contributingCauses, httpReview.ContributingCauses)
+	page := contributingCausesComponent(httpReview.ID, contributingCauses, httpReview.BoundCauses)
 
 	a.render(r.Context(), h, page)
 }
@@ -421,7 +421,7 @@ func (a *reviewsHandler) EditBoundContributingCause(w http.ResponseWriter, r *ht
 		htmx.NewComponent("templates/contributing-causes/binding/_form.html").FS(templates),
 		bindContributingCausesOptions(allCauses),
 	).
-		AddData("ContributingCause", toReviewCauseBasic(boundCause)).
+		AddData("ContributingCause", toBoundCauseBasic(boundCause)).
 		AddData("boundCauseID", boundCauseID).
 		AddData("ReviewID", reviewID).
 		AddData("SelectedCauseID", boundCause.Cause.ID.String())
@@ -460,7 +460,7 @@ func (a *reviewsHandler) UpdateBoundContributingCause(w http.ResponseWriter, r *
 		return
 	}
 
-	var updatedCause ReviewCauseForm
+	var updatedCause BoundCauseForm
 	if err := a.decoder.Decode(&updatedCause, r.PostForm); err != nil {
 		slog.Error("failed to decode request form for updating contributing cause", "error", err)
 		h.WriteHeader(http.StatusBadRequest)
@@ -468,7 +468,7 @@ func (a *reviewsHandler) UpdateBoundContributingCause(w http.ResponseWriter, r *
 		return
 	}
 
-	boundCause, err := a.service.UpdateBoundContributingCause(r.Context(), reviewID, reviewing.ReviewCause{
+	boundCause, err := a.service.UpdateBoundContributingCause(r.Context(), reviewID, reviewing.BoundCause{
 		ID:              boundCauseID,
 		Why:             updatedCause.Why,
 		IsProximalCause: updatedCause.IsProximalCause,
@@ -485,7 +485,7 @@ func (a *reviewsHandler) UpdateBoundContributingCause(w http.ResponseWriter, r *
 		Attach("templates/reviews/__contributing-cause-bound-li.html").
 		SetData(map[string]any{
 			"ReviewID":          reviewID,
-			"ContributingCause": toReviewCauseBasic(boundCause),
+			"ContributingCause": toBoundCauseBasic(boundCause),
 		})
 
 	a.render(r.Context(), h, page)
@@ -545,9 +545,9 @@ func convertToHttpObjects(rs []reviewing.Review) []ReviewBasic {
 }
 
 func convertToHttpObject(r reviewing.Review) ReviewBasic {
-	causes := make([]ReviewCauseBasic, 0, len(r.ContributingCauses))
-	for _, cause := range r.ContributingCauses {
-		causes = append(causes, toReviewCauseBasic(cause))
+	causes := make([]BoundCauseBasic, 0, len(r.BoundCauses))
+	for _, cause := range r.BoundCauses {
+		causes = append(causes, toBoundCauseBasic(cause))
 	}
 
 	return ReviewBasic{
@@ -560,15 +560,15 @@ func convertToHttpObject(r reviewing.Review) ReviewBasic {
 		ReportProximalCause: r.ReportProximalCause,
 		ReportTrigger:       r.ReportTrigger,
 
-		ContributingCauses: causes,
+		BoundCauses: causes,
 
 		CreatedAt: r.CreatedAt,
 		UpdatedAt: r.UpdatedAt,
 	}
 }
 
-func toReviewCauseBasic(cause reviewing.ReviewCause) ReviewCauseBasic {
-	return ReviewCauseBasic{
+func toBoundCauseBasic(cause reviewing.BoundCause) BoundCauseBasic {
+	return BoundCauseBasic{
 		ID:              cause.ID,
 		Name:            cause.Cause.Name,
 		Why:             cause.Why,
