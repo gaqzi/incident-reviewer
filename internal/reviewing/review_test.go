@@ -446,8 +446,8 @@ func TestService_UpdateBoundContributingCause(t *testing.T) {
 			getReview(review).
 			getCause(review.ContributingCauses[0].Cause).
 			updateBoundContributingCauseAction(review, updatedCause). // doesn't update anything
-			saveAction(review). // because it didn't update anything we just get the original passed in again
-			saveReview((func(r reviewing.Review) reviewing.Review { // return something different to show that we're returning whatever is successfully saved
+			saveAction(review).                                       // because it didn't update anything we just get the original passed in again
+			saveReview((func(r reviewing.Review) reviewing.Review {   // return something different to show that we're returning whatever is successfully saved
 				r.ContributingCauses[0] = updatedCause
 				return r
 			})(review)).
