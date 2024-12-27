@@ -1,14 +1,12 @@
 <contributing-causes hx-target="this" hx-swap="outerHTML">
-    {{ .Partials.BindContributingCause }}
+    {{ child "BindContributingCause"
+        "ReviewID" .Data.ReviewID
+        "ContributingCause" .Data.ContributingCause
+        "ContributingCauses" .Data.ContributingCauses }}
 
     <ul class="listing">
         {{ range .Data.BoundCauses }}
-        <li{{ if .IsProximalCause }} class="proximalCause"{{ end }} hx-target="this" hx-swap="innerHTML">
-            <form method="get" action="/reviews/{{ $.Data.ReviewID }}/contributing-causes/{{ .ID }}/edit">
-                <button class="edit" type="submit" title="Edit">✍️</button>
-            </form>
-            <span class="contributingCause">{{ .Name }}</span> — <span class="why">{{ .Why }}</span>
-        </li>
+            {{ child "bound-contributing-cause-li" "ReviewID" $.Data.ReviewID "ContributingCause" . }}
         {{ end }}
     </ul>
 </contributing-causes>
