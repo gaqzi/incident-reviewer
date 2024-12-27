@@ -19,7 +19,7 @@ func TestActionMapper(t *testing.T) {
 		require.ElementsMatch(
 			t,
 			[]string{
-				"AddContributingCause",
+				"BindContributingCause",
 				"UpdateBoundContributingCause",
 				"Save",
 			},
@@ -28,23 +28,23 @@ func TestActionMapper(t *testing.T) {
 		)
 	})
 
-	t.Run("AddContributingCause sets the contributing.Cause on the ReviewCause before adding it to the Review and sets a valid ID if not provided", func(t *testing.T) {
+	t.Run("BindContributingCause sets the contributing.Cause on the BoundCause before adding it to the Review and sets a valid ID if not provided", func(t *testing.T) {
 		mapper := reviewServiceActions()
 
-		doer, err := mapper.Get("AddContributingCause")
+		doer, err := mapper.Get("BindContributingCause")
 		require.NoError(t, err)
-		do, ok := doer.(func(Review, contributing.Cause, ReviewCause) (Review, error))
+		do, ok := doer.(func(Review, contributing.Cause, BoundCause) (Review, error))
 		require.True(t, ok)
 
 		cause := contributing.Cause{Name: "Something"}
-		review, err := do(Review{}, cause, ReviewCause{})
+		review, err := do(Review{}, cause, BoundCause{})
 		require.NoError(t, err)
 
 		require.Equal(
 			t,
-			Review{ContributingCauses: []ReviewCause{{ID: review.ContributingCauses[0].ID, Cause: cause}}},
+			Review{BoundCauses: []BoundCause{{ID: review.BoundCauses[0].ID, Cause: cause}}},
 			review,
-			"expected the contributing cause to have been set on the ReviewCause and then added to the Review",
+			"expected the contributing cause to have been set on the BoundCause and then added to the Review",
 		)
 	})
 

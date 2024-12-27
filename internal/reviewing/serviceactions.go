@@ -17,12 +17,12 @@ import (
 func reviewServiceActions() *action.Mapper {
 	m := &action.Mapper{}
 
-	m.Add("AddContributingCause", func(r Review, c contributing.Cause, rc ReviewCause) (Review, error) {
+	m.Add("BindContributingCause", func(r Review, c contributing.Cause, rc BoundCause) (Review, error) {
 		rc.Cause = c
-		return r.AddContributingCause(rc)
+		return r.BindContributingCause(rc)
 	})
 
-	m.Add("UpdateBoundContributingCause", func(r Review, o ReviewCause) (Review, error) {
+	m.Add("UpdateBoundContributingCause", func(r Review, o BoundCause) (Review, error) {
 		return r.UpdateBoundContributingCause(o)
 	})
 
