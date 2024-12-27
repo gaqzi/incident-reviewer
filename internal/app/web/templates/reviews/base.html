@@ -27,6 +27,6 @@
     <meta name="htmx-config" content='{"responseHandling": [{"code":".*", "swap": true}]}'>
 </head>
 <body hx-boost="true">
-    {{ .Partials.Body }}
+    {{ child "content" }}
 </body>
 </html>

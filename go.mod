@@ -4,6 +4,7 @@ go 1.23.3
 
 require (
 	github.com/donseba/go-htmx v1.12.0
+	github.com/donseba/go-partial v0.8.0
 	github.com/go-chi/chi/v5 v5.2.0
 	github.com/go-chi/httplog/v2 v2.1.1
 	github.com/go-playground/form/v4 v4.2.1

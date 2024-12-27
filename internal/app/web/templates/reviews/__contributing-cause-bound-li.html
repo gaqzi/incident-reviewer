@@ -1,8 +1,6 @@
-{{ define "contributing-cause-bound-li" }}
-<li{{ if .ContributingCause.IsProximalCause }} class="proximalCause"{{ end }} hx-target="this" hx-swap="innerHTML">
-    <form method="get" action="/reviews/{{ .ReviewID }}/contributing-causes/{{ .ContributingCause.ID }}/edit">
+<li{{ if .Data.ContributingCause.IsProximalCause }} class="proximalCause"{{ end }} hx-target="this" hx-swap="innerHTML">
+    <form method="get" action="/reviews/{{ .Data.ReviewID }}/contributing-causes/{{ .Data.ContributingCause.ID }}/edit">
         <button class="edit" type="submit" title="Edit">✍️</button>
     </form>
-    <span class="contributingCause">{{ .ContributingCause.Name }}</span> — <span class="why">{{ .ContributingCause.Why }}</span>
+    <span class="contributingCause">{{ .Data.ContributingCause.Name }}</span> — <span class="why">{{ .Data.ContributingCause.Why }}</span>
 </li>
-{{ end }}

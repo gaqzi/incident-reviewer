@@ -112,7 +112,7 @@ func TestReviewing(t *testing.T) {
 		require.Equal(t, createdAt, newCreatedAt, "expected to not have changed the created at when saving")
 		require.NotEqual(t, updatedAt, newUpdatedAt, "expected to have changed the updatedAt when saving")
 
-		// Time to add a normalized contributing cause
+		// Time to bind a normalized contributing cause
 		// TODO: break this test up, it shouldn't be this big, keeping it for now because it means I'd have to refactor into
 		//  nicer and reusable components, which is good, but I just want to keep going right now.
 
