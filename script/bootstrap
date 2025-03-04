@@ -21,12 +21,12 @@ function installAsdf() {
   echo "Auto-installing asdf shell setup in:"
   echo "    - $HOME/.profile for bash"
   echo "$bash_line" >> $HOME/.profile
-  eval "$bash_line"
 
   echo "    - $HOME/.zshrc for zsh"
   echo "$bash_line" >> $HOME/.zshrc
 
   echo "Restart your shell for changes to take effect"
+  exit 1
 }
 
 function installAsdfPlugins() {
