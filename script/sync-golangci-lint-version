@@ -2,9 +2,9 @@
 # A script to help update the go version used across all the files that need
 # it set consistently, relies on asdf to manage the go version.
 
-: ${VERSION:=$1}
+: ${GOLANGCI_LINT_VERSION:=$1}
 
-if [ -z "$VERSION" ]; then
+if [ -z "$GOLANGCI_LINT_VERSION" ]; then
   GOLANGCI_LINT_VERSION="latest"
 fi
 
