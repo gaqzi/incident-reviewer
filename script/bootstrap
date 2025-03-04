@@ -23,8 +23,8 @@ function installAsdf() {
   echo "$bash_line" >> $HOME/.profile
   eval "$bash_line"
 
-  echo "    - $HOME/.zprofile for zsh"
-  echo "$bash_line" >> $HOME/.zprofile
+  echo "    - $HOME/.zshrc for zsh"
+  echo "$bash_line" >> $HOME/.zshrc
 
   echo "Restart your shell for changes to take effect"
 }
