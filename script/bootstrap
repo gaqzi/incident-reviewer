@@ -19,8 +19,8 @@ function installAsdf() {
   fi
 
   echo "Auto-installing asdf shell setup in:"
-  echo "    - $HOME/.profile for bash"
-  echo "$bash_line" >> $HOME/.profile
+  echo "    - $HOME/.bashrc for bash"
+  echo "$bash_line" >> $HOME/.bashrc
 
   echo "    - $HOME/.zshrc for zsh"
   echo "$bash_line" >> $HOME/.zshrc
