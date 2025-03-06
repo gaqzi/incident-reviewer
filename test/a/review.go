@@ -153,3 +153,24 @@ func (b BuilderBoundCause) WithIsProximalCause(tf bool) BuilderBoundCause {
 func (b BuilderBoundCause) Build() reviewing.BoundCause {
 	return b.rc
 }
+
+type BuilderBoundTrigger struct {
+	bt reviewing.BoundTrigger
+}
+
+func (b BuilderBoundTrigger) IsValid() BuilderBoundTrigger {
+	b.bt.ID = uuid.MustParse("0193f6e0-a83b-71aa-a712-b0f7e0521108")
+	b.bt.Why = "because"
+	b.bt.Trigger = NormalizedTrigger().Build()
+
+	return b
+}
+
+func (b BuilderBoundTrigger) Build() reviewing.BoundTrigger {
+	return b.bt
+}
+
+func BoundTrigger() BuilderBoundTrigger {
+	return BuilderBoundTrigger{}.
+		IsValid()
+}

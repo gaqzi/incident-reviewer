@@ -192,6 +192,7 @@ func TestReviewing(t *testing.T) {
 		triggerForm := page.Locator(`#triggers form.new`)
 		options, err = triggerForm.Locator(`[name="triggerID"] option`).All() // TODO: extract selecting an option into a helper
 		require.NoError(t, err)
+		require.GreaterOrEqual(t, len(options), 1)
 		for _, opt := range options {
 			innerTexts, err := opt.AllInnerTexts()
 			require.NoError(t, err)
@@ -206,7 +207,7 @@ func TestReviewing(t *testing.T) {
 			}
 		}
 		require.NotEmpty(t, chosenOption, "expected to have found a chosen option")
-		_, err = causesForm.Locator(`[name="triggerID"]`).SelectOption(playwright.SelectOptionValues{Values: &[]string{chosenOption}})
+		_, err = triggerForm.Locator(`[name="triggerID"]`).SelectOption(playwright.SelectOptionValues{Values: &[]string{chosenOption}})
 		require.NoError(t, err, "expected to have set the option")
 
 		require.NoError(t, triggerForm.Locator(`[name="why"]`).Fill("Marketing campaign started"))

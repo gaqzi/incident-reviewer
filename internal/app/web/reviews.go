@@ -34,6 +34,7 @@ type reviewingService interface {
 	BindContributingCause(ctx context.Context, reviewID uuid.UUID, causeID uuid.UUID, boundCause reviewing.BoundCause) error
 	GetBoundContributingCause(ctx context.Context, reviewID uuid.UUID, boundCauseID uuid.UUID) (reviewing.BoundCause, error)
 	UpdateBoundContributingCause(ctx context.Context, reviewID uuid.UUID, boundCause reviewing.BoundCause) (reviewing.BoundCause, error)
+	BindTrigger(ctx context.Context, reviewID uuid.UUID, triggerID uuid.UUID, trigger reviewing.BoundTrigger) error
 }
 
 type causeAller interface {
@@ -85,6 +86,8 @@ func ReviewsHandler(service reviewingService, causeStore causeAller) func(chi.Ro
 			r.Post("/contributing-causes", app.BindContributingCause)
 			r.Get("/contributing-causes/{boundCauseID}/edit", app.EditBoundContributingCause)
 			r.Post("/contributing-causes/{boundCauseID}/edit", app.UpdateBoundContributingCause)
+
+			r.Post("/triggers", app.BindTrigger)
 		})
 	}
 }
@@ -130,6 +133,16 @@ type BoundCauseForm struct {
 	ContributingCauseID uuid.UUID `form:"contributingCauseID"`
 	Why                 string    `form:"why"`
 	IsProximalCause     bool      `form:"isProximalCause"`
+
+	UpdatedAt time.Time
+	CreatedAt time.Time
+}
+
+type TriggerForm struct {
+	ID        uuid.UUID `form:"id"`
+	ReviewID  uuid.UUID `form:"reviewID"`
+	TriggerID uuid.UUID `form:"triggerID"`
+	Why       string    `form:"why"`
 
 	UpdatedAt time.Time
 	CreatedAt time.Time
@@ -262,6 +275,10 @@ func (a *reviewsHandler) Show(w http.ResponseWriter, r *http.Request) {
 					NewID("bound-contributing-cause-li", "templates/reviews/__contributing-cause-bound-li.html").
 					SetFileSystem(templates),
 				),
+			).
+			With(partial.
+				NewID("triggers", "templates/reviews/_triggers.html").
+				SetFileSystem(templates),
 			),
 		).
 		Wrap(partial.NewID("base", "templates/reviews/base.html"))
@@ -599,6 +616,89 @@ func (a *reviewsHandler) loadContributingCauses(ctx context.Context, h *htmx.Han
 	}
 
 	return contributingCauses, nil
+}
+
+func (a *reviewsHandler) BindTrigger(w http.ResponseWriter, r *http.Request) {
+	h := a.htmx.NewHandler(w, r)
+
+	if !h.IsHxRequest() {
+		h.WriteHeader(http.StatusNotFound)
+		h.JustWriteString("non-htmx requests not yet supported")
+	}
+
+	reviewID, err := uuid.Parse(r.PathValue("id"))
+	if err != nil {
+		slog.Error("failed to parse id for create contributing cause", "id", r.PathValue("id"), "error", err)
+		h.WriteHeader(http.StatusBadRequest)
+		h.JustWriteString("invalid id")
+		return
+	}
+
+	if err := r.ParseForm(); err != nil {
+		slog.Error("failed to parse form", "error", err)
+		h.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	var triggerForm TriggerForm
+	if err := a.decoder.Decode(&triggerForm, r.PostForm); err != nil {
+		slog.Error("failed to decode basic trigger form", "error", err)
+		h.WriteHeader(http.StatusBadRequest)
+		h.JustWriteString(err.Error())
+		return
+	}
+
+	if err := a.service.BindTrigger(
+		r.Context(),
+		reviewID,
+		triggerForm.TriggerID,
+		reviewing.BoundTrigger{Why: triggerForm.Why},
+	); err != nil {
+		slog.Error("failed to bind trigger", "reviewID", reviewID, "error", err)
+		h.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	_, _ = h.WriteString("successfully saved trigger")
+
+	//review, err := a.loadReview(r.Context(), h, reviewID)
+	//if err != nil {
+	//	return
+	//}
+	//
+	//contributingCauses, err := a.loadContributingCauses(r.Context(), h)
+	//if err != nil {
+	//	return
+	//}
+	//
+	//httpReview := convertToHttpObject(review)
+	//layout := a.layout(
+	//	partial.
+	//		NewID("contributing-causes", "templates/reviews/_contributing-causes.html").
+	//		SetFileSystem(templates).
+	//		AddData("Review", httpReview).
+	//		AddData("BoundCauses", httpReview.BoundCauses).
+	//		AddData("ContributingCauses", convertContributingCauseToHttpObjects(contributingCauses)).
+	//		AddData("ReviewID", reviewID).
+	//		AddData("ContributingCause", BoundCauseBasic{}).
+	//		With(partial.
+	//			NewID("BindContributingCause",
+	//				"templates/contributing-causes/binding/_form.html",
+	//				"templates/contributing-causes/binding/__causes-options.html").
+	//			SetFileSystem(templates),
+	//		).
+	//		With(partial.
+	//			NewID("bound-contributing-cause-li", "templates/reviews/__contributing-cause-bound-li.html").
+	//			SetFileSystem(templates),
+	//		),
+	//)
+	//
+	//if err := layout.WriteWithRequest(r.Context(), w, r); err != nil {
+	//	slog.Error("failed to render bind contributing cause", "reviewID", reviewID, "error", err)
+	//	http.Error(w, err.Error(), http.StatusInternalServerError)
+	//	return
+	//}
+
 }
 
 func baseContent() htmx.RenderableComponent {

@@ -361,6 +361,68 @@ func TestService_AddContributingCause(t *testing.T) {
 	})
 }
 
+func TestService_BindTrigger(t *testing.T) {
+	t.Run("when review doesn't exist it returns the error from the storage", func(t *testing.T) {
+		service := newService().
+			getReviewFail().
+			Build(t)
+		ctx := context.Background()
+
+		actual := service.BindTrigger(ctx, uuid.Nil, uuid.Nil, a.BoundTrigger().Build())
+
+		require.Error(t, actual, "expected an error since we haven't stored any reviews")
+		require.ErrorContainsf(t, actual, "failed to get review:", "so we know we got the correct error")
+	})
+
+	t.Run("when the contributing cause isn't known return the error from it", func(t *testing.T) {
+		review := a.Review().Build()
+		service := newService().
+			getReview(review).
+			getCauseFail().
+			Build(t)
+
+		actual := service.BindContributingCause(
+			context.Background(),
+			review.ID,
+			uuid.Nil,
+			a.BoundCause().Build(),
+		)
+
+		require.ErrorContains(t, actual, "failed to get contributing cause:")
+	})
+
+	t.Run("it returns any errors when adding the cause to the review", func(t *testing.T) {
+		review := a.Review().Build()
+		boundCause := a.BoundCause().Build()
+		service := newService().
+			getReview(review).
+			getCause(boundCause.Cause).
+			bindContributingCauseActionFail().
+			Build(t)
+
+		actual := service.BindContributingCause(context.Background(), review.ID, boundCause.Cause.ID, boundCause)
+
+		require.ErrorContains(t, actual, "failed to add contributing cause to review:")
+	})
+
+	t.Run("when both review and contributing cause are known bind it", func(t *testing.T) {
+		review := a.Review().Build()
+		cause := a.ContributingCause().Build()
+		boundCause := a.BoundCause().WithCause(cause).Build()
+		service := newService().
+			getReview(review).
+			getCause(boundCause.Cause).
+			saveAction(review).
+			bindContributingCauseAction(review, cause, boundCause).
+			saveReview(review).
+			Build(t)
+		ctx := context.Background()
+
+		actual := service.BindContributingCause(ctx, review.ID, cause.ID, boundCause)
+		require.NoError(t, actual, "expected to have bound the cause to the review successfully")
+	})
+}
+
 func TestService_GetBoundContributingCause(t *testing.T) {
 	t.Run("when the review doesn't exist it returns an error", func(t *testing.T) {
 		service := newService().
@@ -446,8 +508,8 @@ func TestService_UpdateBoundContributingCause(t *testing.T) {
 			getReview(review).
 			getCause(review.BoundCauses[0].Cause).
 			updateBoundContributingCauseAction(review, updatedCause). // doesn't update anything
-			saveAction(review).                                       // because it didn't update anything we just get the original passed in again
-			saveReview((func(r reviewing.Review) reviewing.Review {   // return something different to show that we're returning whatever is successfully saved
+			saveAction(review). // because it didn't update anything we just get the original passed in again
+			saveReview((func(r reviewing.Review) reviewing.Review { // return something different to show that we're returning whatever is successfully saved
 				r.BoundCauses[0] = updatedCause
 				return r
 			})(review)).
