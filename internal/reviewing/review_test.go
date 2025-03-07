@@ -49,8 +49,8 @@ type triggerStorageMock struct {
 	mock.Mock
 }
 
-func (m *triggerStorageMock) Get(ctx context.Context, trigger normalized.Trigger) (normalized.Trigger, error) {
-	args := m.Called(ctx, trigger)
+func (m *triggerStorageMock) Get(ctx context.Context, triggerID uuid.UUID) (normalized.Trigger, error) {
+	args := m.Called(ctx, triggerID)
 
 	return args.Get(0).(normalized.Trigger), args.Error(1)
 }
@@ -64,9 +64,10 @@ type builderService struct {
 
 func newService() builderService {
 	return builderService{
-		reviewStorage: new(reviewStorageMock),
-		causeStorage:  new(causeStorageMock),
-		actionMapper:  &action.Mapper{},
+		reviewStorage:  new(reviewStorageMock),
+		causeStorage:   new(causeStorageMock),
+		triggerStorage: new(triggerStorageMock),
+		actionMapper:   &action.Mapper{},
 	}
 }
 
