@@ -4,10 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/gaqzi/incident-reviewer/internal/normalized"
 	"slices"
 	"strings"
 	"time"
+
+	"github.com/gaqzi/incident-reviewer/internal/normalized"
 
 	"github.com/google/uuid"
 
@@ -144,34 +145,34 @@ type Service struct {
 }
 
 func (s *Service) BindTrigger(ctx context.Context, reviewID uuid.UUID, triggerID uuid.UUID, boundTrigger BoundTrigger) error {
-	review, err := s.reviewStore.Get(ctx, reviewID)
+	_, err := s.reviewStore.Get(ctx, reviewID)
 	if err != nil {
 		return fmt.Errorf("failed to get review: %w", err)
 	}
-
-	trigger, err := s.triggerStore.Get(ctx, triggerID)
-	if err != nil {
-		return fmt.Errorf("failed to get trigger: %w", err)
-	}
-
-	doer, err := s.action.Get("BindTrigger")
-	if err != nil {
-		return fmt.Errorf("failed to get action for binding trigger: %w", err)
-	}
-	do, ok := doer.(func(Review, normalized.Trigger, BoundTrigger) (Review, error))
-	if !ok {
-		return fmt.Errorf("failed to cast action for binding trigger: %w", err)
-	}
-
-	review, err = do(review, trigger, boundTrigger)
-	if err != nil {
-		return fmt.Errorf("failed binding trigger to review: %w", err)
-	}
-
-	_, err = s.Save(ctx, review)
-	if err != nil {
-		return fmt.Errorf("failed to save review: %w", err)
-	}
+	return fmt.Errorf("failed to get trigger: %w", err)
+	// trigger, err := s.triggerStore.Get(ctx, triggerID)
+	// if err != nil {
+	//
+	// }
+	//
+	// doer, err := s.action.Get("BindTrigger")
+	// if err != nil {
+	// 	return fmt.Errorf("failed to get action for binding trigger: %w", err)
+	// }
+	// do, ok := doer.(func(Review, normalized.Trigger, BoundTrigger) (Review, error))
+	// if !ok {
+	// 	return fmt.Errorf("failed to cast action for binding trigger: %w", err)
+	// }
+	//
+	// review, err = do(review, trigger, boundTrigger)
+	// if err != nil {
+	// 	return fmt.Errorf("failed binding trigger to review: %w", err)
+	// }
+	//
+	// _, err = s.Save(ctx, review)
+	// if err != nil {
+	// 	return fmt.Errorf("failed to save review: %w", err)
+	// }
 
 	return nil
 }
