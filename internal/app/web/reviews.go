@@ -661,44 +661,6 @@ func (a *reviewsHandler) BindTrigger(w http.ResponseWriter, r *http.Request) {
 
 	_, _ = h.WriteString("successfully saved trigger")
 
-	//review, err := a.loadReview(r.Context(), h, reviewID)
-	//if err != nil {
-	//	return
-	//}
-	//
-	//contributingCauses, err := a.loadContributingCauses(r.Context(), h)
-	//if err != nil {
-	//	return
-	//}
-	//
-	//httpReview := convertToHttpObject(review)
-	//layout := a.layout(
-	//	partial.
-	//		NewID("contributing-causes", "templates/reviews/_contributing-causes.html").
-	//		SetFileSystem(templates).
-	//		AddData("Review", httpReview).
-	//		AddData("BoundCauses", httpReview.BoundCauses).
-	//		AddData("ContributingCauses", convertContributingCauseToHttpObjects(contributingCauses)).
-	//		AddData("ReviewID", reviewID).
-	//		AddData("ContributingCause", BoundCauseBasic{}).
-	//		With(partial.
-	//			NewID("BindContributingCause",
-	//				"templates/contributing-causes/binding/_form.html",
-	//				"templates/contributing-causes/binding/__causes-options.html").
-	//			SetFileSystem(templates),
-	//		).
-	//		With(partial.
-	//			NewID("bound-contributing-cause-li", "templates/reviews/__contributing-cause-bound-li.html").
-	//			SetFileSystem(templates),
-	//		),
-	//)
-	//
-	//if err := layout.WriteWithRequest(r.Context(), w, r); err != nil {
-	//	slog.Error("failed to render bind contributing cause", "reviewID", reviewID, "error", err)
-	//	http.Error(w, err.Error(), http.StatusInternalServerError)
-	//	return
-	//}
-
 }
 
 func baseContent() htmx.RenderableComponent {

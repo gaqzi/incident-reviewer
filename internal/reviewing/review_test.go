@@ -502,14 +502,14 @@ func TestService_UpdateBoundContributingCause(t *testing.T) {
 	})
 
 	t.Run("when the update is successful it returns the updated reviewing.BoundCause", func(t *testing.T) {
-		review := a.Review().WithContributingCause().Build()
+		review := a.Review().WithContrqibutingCause().Build()
 		updatedCause := a.BoundCause().WithWhy("updated cause").Build()
 		service := newService().
 			getReview(review).
 			getCause(review.BoundCauses[0].Cause).
 			updateBoundContributingCauseAction(review, updatedCause). // doesn't update anything
-			saveAction(review). // because it didn't update anything we just get the original passed in again
-			saveReview((func(r reviewing.Review) reviewing.Review { // return something different to show that we're returning whatever is successfully saved
+			saveAction(review).                                       // because it didn't update anything we just get the original passed in again
+			saveReview((func(r reviewing.Review) reviewing.Review {   // return something different to show that we're returning whatever is successfully saved
 				r.BoundCauses[0] = updatedCause
 				return r
 			})(review)).
