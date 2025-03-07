@@ -735,6 +735,9 @@ func TestReview_BindTrigger(t *testing.T) {
 		r := a.Review().Build()
 		bt := a.BoundTrigger().IsNotSaved().Build()
 
+		_, err := r.BindTrigger(bt)
+		require.NoError(t, err)
+		require.Equal(t, r, a.Review().WithBoundTrigger(a.BoundTrigger().WithID(r.BoundTriggers[0].ID).Build()))
 		// when saving a valid trigger that hasn't been saved (i.e. it doesn't have an ID yet) it sets an id and then adds it to the list of bound triggers
 	})
 }

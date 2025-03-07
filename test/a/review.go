@@ -109,6 +109,10 @@ func (b BuilderReview) WithContributingCause(rcs ...reviewing.BoundCause) Builde
 	return b
 }
 
+func (b BuilderReview) WithBoundTrigger(rt reviewing.BoundTrigger) BuilderReview {
+	b.r.
+}
+
 type BuilderBoundCause struct {
 	rc reviewing.BoundCause
 }
