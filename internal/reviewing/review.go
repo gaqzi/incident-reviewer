@@ -149,11 +149,11 @@ func (s *Service) BindTrigger(ctx context.Context, reviewID uuid.UUID, triggerID
 	if err != nil {
 		return fmt.Errorf("failed to get review: %w", err)
 	}
-	return fmt.Errorf("failed to get trigger: %w", err)
-	// trigger, err := s.triggerStore.Get(ctx, triggerID)
-	// if err != nil {
-	//
-	// }
+
+	_, err = s.triggerStore.Get(ctx, triggerID)
+	if err != nil {
+		return fmt.Errorf("failed to get trigger: %w", err)
+	}
 	//
 	// doer, err := s.action.Get("BindTrigger")
 	// if err != nil {
@@ -185,11 +185,12 @@ func WithActionMapper(mapper *action.Mapper) Option {
 	}
 }
 
-func NewService(reviewStore Storage, causeStore causeStore, opts ...Option) *Service {
+func NewService(reviewStore Storage, causeStore causeStore, triggerStore triggerStore, opts ...Option) *Service {
 	s := Service{
-		reviewStore: reviewStore,
-		causeStore:  causeStore,
-		action:      reviewServiceActions(),
+		reviewStore:  reviewStore,
+		causeStore:   causeStore,
+		triggerStore: triggerStore,
+		action:       reviewServiceActions(),
 	}
 
 	for _, opt := range opts {
