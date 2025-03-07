@@ -1,6 +1,6 @@
 module github.com/gaqzi/incident-reviewer
 
-go 1.24.0
+go 1.24.1
 
 require (
 	github.com/donseba/go-htmx v1.12.0
