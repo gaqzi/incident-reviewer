@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/gaqzi/incident-reviewer/internal/normalized"
 	"github.com/gaqzi/incident-reviewer/internal/normalized/contributing"
 	"github.com/gaqzi/incident-reviewer/internal/platform/action"
 	"github.com/gaqzi/incident-reviewer/internal/platform/validate"
@@ -33,9 +34,9 @@ func reviewServiceActions() *action.Mapper {
 
 		return r.updateTimestamps(), nil
 	})
-	m.Add("BindTrigger", func(r Review, c contributing.Cause, rc BoundCause) (Review, error) {
-		rc.Cause = c
-		return r.BindContributingCause(rc)
+	m.Add("BindTrigger", func(r Review, t normalized.Trigger, bt BoundTrigger) (Review, error) {
+		bt.Trigger = t
+		return r.BindTrigger(bt)
 	})
 
 	return m

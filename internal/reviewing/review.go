@@ -26,7 +26,8 @@ type Review struct {
 	ReportProximalCause string    `validate:"required"`
 	ReportTrigger       string    `validate:"required"`
 
-	BoundCauses []BoundCause
+	BoundCauses   []BoundCause
+	BoundTriggers []BoundTrigger
 
 	CreatedAt time.Time
 	UpdatedAt time.Time
@@ -107,6 +108,12 @@ func (r Review) UpdateBoundContributingCause(o BoundCause) (Review, error) {
 	if err != nil {
 		return r, fmt.Errorf("failed to add back bound contributing cause: %w", err)
 	}
+
+	return r, nil
+}
+
+func (r Review) BindTrigger(bt BoundTrigger) (Review, error) {
+	// r.BoundTriggers = append(r.BoundTriggers, bt)
 
 	return r, nil
 }

@@ -58,15 +58,15 @@ func TestActionMapper(t *testing.T) {
 		do, ok := doer.(func(Review, normalized.Trigger, BoundTrigger) (Review, error))
 		require.True(t, ok)
 
-		cause := normalized.Trigger{}
-		review, err := do(Review{}, cause, BoundTrigger{})
+		trigger := normalized.Trigger{Name: "Something"}
+		review, err := do(Review{}, trigger, BoundTrigger{Why: "a good reason"})
 		require.NoError(t, err)
 
 		require.Equal(
 			t,
-			Review{BoundCauses: []BoundCause{{ID: review.BoundCauses[0].ID, Cause: cause}}},
+			Review{BoundTriggers: []BoundTrigger{{Trigger: trigger, Why: "a good reason"}}},
 			review,
-			"expected the contributing cause to have been set on the BoundCause and then added to the Review",
+			"expected the contributing trigger to have been set on the BoundTrigger and then added to the Review",
 		)
 	})
 
