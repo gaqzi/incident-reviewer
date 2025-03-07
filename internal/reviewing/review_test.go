@@ -733,7 +733,7 @@ func TestReview_UpdateBoundContributingCause(t *testing.T) {
 func TestReview_BindTrigger(t *testing.T) {
 	t.Run("adds the bound trigger to the list of bound triggers", func(t *testing.T) {
 		r := a.Review().Build()
-		bt := a.BoundTrigger().Build()
+		bt := a.BoundTrigger().IsNotSaved().Build()
 
 		// when saving a valid trigger that hasn't been saved (i.e. it doesn't have an ID yet) it sets an id and then adds it to the list of bound triggers
 	})

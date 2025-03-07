@@ -158,10 +158,15 @@ type BuilderBoundTrigger struct {
 	bt reviewing.BoundTrigger
 }
 
-func (b BuilderBoundTrigger) IsValid() BuilderBoundTrigger {
+func (b BuilderBoundTrigger) IsSaved() BuilderBoundTrigger {
 	b.bt.ID = uuid.MustParse("0193f6e0-a83b-71aa-a712-b0f7e0521108")
 	b.bt.Why = "because"
 	b.bt.Trigger = NormalizedTrigger().Build()
+
+	return b
+}
+func (b BuilderBoundTrigger) IsNotSaved() BuilderBoundTrigger {
+	b.bt.ID = uuid.Nil
 
 	return b
 }
@@ -172,5 +177,5 @@ func (b BuilderBoundTrigger) Build() reviewing.BoundTrigger {
 
 func BoundTrigger() BuilderBoundTrigger {
 	return BuilderBoundTrigger{}.
-		IsValid()
+		IsSaved()
 }
