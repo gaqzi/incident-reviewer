@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 
+	"github.com/gaqzi/incident-reviewer/internal/normalized"
 	"github.com/gaqzi/incident-reviewer/internal/normalized/contributing"
 )
 
@@ -22,6 +23,7 @@ func TestActionMapper(t *testing.T) {
 				"BindContributingCause",
 				"UpdateBoundContributingCause",
 				"Save",
+				"BindTrigger",
 			},
 			mapper.All(),
 			"expected all causes to be listed here so we catch when we add new or remove one",
@@ -38,6 +40,26 @@ func TestActionMapper(t *testing.T) {
 
 		cause := contributing.Cause{Name: "Something"}
 		review, err := do(Review{}, cause, BoundCause{})
+		require.NoError(t, err)
+
+		require.Equal(
+			t,
+			Review{BoundCauses: []BoundCause{{ID: review.BoundCauses[0].ID, Cause: cause}}},
+			review,
+			"expected the contributing cause to have been set on the BoundCause and then added to the Review",
+		)
+	})
+
+	t.Run("BindTrigger sets the normalized.Trigger on the BoundTrigger before adding it to the Review and sets a valid ID if not provided", func(t *testing.T) {
+		mapper := reviewServiceActions()
+
+		doer, err := mapper.Get("BindTrigger")
+		require.NoError(t, err)
+		do, ok := doer.(func(Review, normalized.Trigger, BoundTrigger) (Review, error))
+		require.True(t, ok)
+
+		cause := normalized.Trigger{}
+		review, err := do(Review{}, cause, BoundTrigger{})
 		require.NoError(t, err)
 
 		require.Equal(

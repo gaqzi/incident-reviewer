@@ -154,16 +154,16 @@ func (s *Service) BindTrigger(ctx context.Context, reviewID uuid.UUID, triggerID
 	if err != nil {
 		return fmt.Errorf("failed to get trigger: %w", err)
 	}
-	//
-	// doer, err := s.action.Get("BindTrigger")
-	// if err != nil {
-	// 	return fmt.Errorf("failed to get action for binding trigger: %w", err)
-	// }
-	// do, ok := doer.(func(Review, normalized.Trigger, BoundTrigger) (Review, error))
-	// if !ok {
-	// 	return fmt.Errorf("failed to cast action for binding trigger: %w", err)
-	// }
-	//
+
+	doer, err := s.action.Get("BindTrigger")
+	if err != nil {
+		return fmt.Errorf("failed to get action for binding trigger: %w", err)
+	}
+	_, ok := doer.(func(Review, normalized.Trigger, BoundTrigger) (Review, error))
+	if !ok {
+		return fmt.Errorf("failed to cast action for binding trigger: %w", err)
+	}
+
 	// review, err = do(review, trigger, boundTrigger)
 	// if err != nil {
 	// 	return fmt.Errorf("failed binding trigger to review: %w", err)

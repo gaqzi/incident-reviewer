@@ -33,6 +33,10 @@ func reviewServiceActions() *action.Mapper {
 
 		return r.updateTimestamps(), nil
 	})
+	m.Add("BindTrigger", func(r Review, c contributing.Cause, rc BoundCause) (Review, error) {
+		rc.Cause = c
+		return r.BindContributingCause(rc)
+	})
 
 	return m
 }

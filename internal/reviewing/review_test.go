@@ -162,6 +162,12 @@ func (b builderService) getCauseFail(err ...error) builderService {
 	return b
 }
 
+func (b builderService) getTrigger(t normalized.Trigger) builderService {
+	b.triggerStorage.On("Get", mock.Anything, t.ID).Return(t, nil)
+
+	return b
+}
+
 func (b builderService) getTriggerFail(err ...error) builderService {
 	if err == nil {
 		err = append(err, errors.New("uh-oh"))
@@ -421,12 +427,12 @@ func TestService_BindTrigger(t *testing.T) {
 		boundTrigger := a.BoundTrigger().Build()
 		service := newService().
 			getReview(review).
-			bindContributingCauseActionFail().
+			getTrigger(boundTrigger.Trigger).
 			Build(t)
 
 		actual := service.BindTrigger(context.Background(), review.ID, boundTrigger.Trigger.ID, boundTrigger)
 
-		require.ErrorContains(t, actual, "failed to add contributing cause to review:")
+		require.ErrorContains(t, actual, "failed to add trigger to review:")
 	})
 	//
 	// t.Run("when both review and contributing cause are known bind it", func(t *testing.T) {
