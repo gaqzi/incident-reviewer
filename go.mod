@@ -5,6 +5,7 @@ go 1.24.1
 require (
 	github.com/donseba/go-htmx v1.12.0
 	github.com/donseba/go-partial v0.8.0
+	github.com/gaqzi/passepartout v0.0.0-20250313145024-aa7daa1a0fed
 	github.com/go-chi/chi/v5 v5.2.1
 	github.com/go-chi/httplog/v2 v2.1.1
 	github.com/go-playground/form/v4 v4.2.1
@@ -22,7 +23,7 @@ require (
 )
 
 require (
-	dario.cat/mergo v1.0.0 // indirect
+	dario.cat/mergo v1.0.1 // indirect
 	github.com/AdaLogics/go-fuzz-headers v0.0.0-20230811130428-ced1acdcaa24 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
