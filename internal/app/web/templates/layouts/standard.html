@@ -7,8 +7,7 @@
         section, contributing-causes {
             display: block;
             border: 1px solid black;
-            margin: 2em auto;
-            width: 75vw;
+            margin: 1em 0;
             padding: 0 1em 1em 1em;
         }
 
@@ -28,6 +27,6 @@
     <meta name="htmx-config" content='{"responseHandling": [{"code":".*", "swap": true}]}'>
 </head>
 <body hx-boost="true">
-    {{ child "content" }}
+    {{ block "content" . }}DEFAULT EMPTY CONTENT{{ end }}
 </body>
 </html>

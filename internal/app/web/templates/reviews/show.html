@@ -25,8 +25,4 @@
     {{ end}}
 {{ end }}
 
-{{ child "contributing-causes"
-    "BoundCauses" .Data.BoundCauses
-    "ContributingCause" .Data.ContributingCause
-    "ContributingCauses" .Data.ContributingCauses
-    "ReviewID" .Data.ReviewID }}
+{{ template "reviews/show/_contributing-causes.html" . }}

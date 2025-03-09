@@ -1,0 +1,22 @@
+<li id="causes" hx-target="this" hx-swap="innerHTML" hx-replace-url="false">
+    <label>
+        <dfn title="A part of why we had an incident">Contributing cause</dfn>:
+        {{ $selectedID := .SelectedCauseID }}
+        <select name="contributingCauseID" required>
+            <option disabled selected>-- select --</option>
+            {{ range $category, $causes := .ContributingCauses }}
+            <optgroup label="{{ $category }}">
+                {{ range $causes }}
+                <option value="{{ .ID }}" {{ if eq .ID.String $selectedID }}selected{{ end }}>
+                    {{ .Name }} — {{ .Description }}
+                </option>
+                {{ end }}
+            </optgroup>
+            {{ end }}
+        </select>
+    </label>
+
+    <form method="get" action="/contributing-causes/new">
+        <button type="submit">Propose new contributing cause</button>
+    </form>
+</li>

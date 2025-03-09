@@ -6,7 +6,7 @@
                     href="/reviews/{{ .Data.New.Created.ID }}">{{ .Data.New.Created.Title }}</a>!</p>
     {{ end }}
 
-    {{ child "new-review" }}
+    {{ template "reviews/index/_new-form.html" }}
 </section>
 
 
