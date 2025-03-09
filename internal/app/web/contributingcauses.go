@@ -2,7 +2,6 @@ package web
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"net/http"
 
@@ -26,20 +25,6 @@ type causesHandler struct {
 	service causeService
 	partial *partial.Service
 	pp      *passepartout.Passepartout
-}
-
-func (a *causesHandler) layout(ps ...*partial.Partial) *partial.Layout {
-	if len(ps) > 1 {
-		panic(fmt.Sprintf("only one partial is allowed, got: %d", len(ps)))
-	}
-
-	layout := a.partial.NewLayout().FS(templates)
-
-	for _, p := range ps {
-		layout.Set(p)
-	}
-
-	return layout
 }
 
 func ContributingCausesHandler(service causeService) func(chi.Router) {
@@ -121,16 +106,12 @@ func (a *causesHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	layout := a.layout(partial.
-		NewID("causes",
-			"templates/contributing-causes/binding/only-options.html",
-			"templates/contributing-causes/binding/__causes-options.html",
-		).
-		AddData("SelectedCauseID", cause.ID.String()).
-		AddData("ContributingCauses", convertContributingCauseToHttpObjects(causes)),
-	)
+	data := map[string]any{
+		"SelectedCauseID":    cause.ID.String(),
+		"ContributingCauses": convertContributingCauseToHttpObjects(causes),
+	}
 
-	if err := layout.WriteWithRequest(r.Context(), w, r); err != nil {
+	if err := a.pp.Render(w, "contributing-causes/new/_options.html", data); err != nil {
 		slog.Error("failed to render partial contributing-causes/binding/", "error", err)
 		http.Error(w, "failed to render", http.StatusInternalServerError)
 		return
