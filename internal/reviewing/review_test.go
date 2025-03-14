@@ -742,7 +742,7 @@ func TestReview_BindTrigger(t *testing.T) {
 		assert.NotEqual(t, bt.ID, actual.BoundTriggers[0].ID)
 		require.NotEmpty(t, actual.BoundTriggers[0].ID, "expected to have set the ID when binding, overwriting any existing IDs")
 
-		require.Equal(t, actual, a.Review().WithBoundTrigger(a.BoundTrigger().WithID(actual.BoundTriggers[0].ID).Build()))
+		require.Equal(t, actual, a.Review().WithBoundTrigger(a.BoundTrigger().WithID(actual.BoundTriggers[0].ID).Build()).Build())
 		// when saving a valid trigger that hasn't been saved (i.e. it doesn't have an ID yet) it sets an id and then adds it to the list of bound triggers
 	})
 }

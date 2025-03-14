@@ -112,8 +112,12 @@ func (r Review) UpdateBoundContributingCause(o BoundCause) (Review, error) {
 	return r, nil
 }
 
-func (r Review) BindTrigger(bt BoundTrigger) (Review, error) {
-	bt.ID = uuid.Must(uuid.NewV7())
+func (r Review) BindTrigger(t normalized.Trigger, ubt UnboundTrigger) (Review, error) {
+	bt := BoundTrigger{
+		ID:             uuid.Must(uuid.NewV7()),
+		Trigger:        t,
+		UnboundTrigger: ubt,
+	}
 
 	r.BoundTriggers = append(r.BoundTriggers, bt)
 
@@ -127,10 +131,14 @@ type BoundCause struct {
 	IsProximalCause bool
 }
 
+type UnboundTrigger struct {
+	Why string `validate:"required"`
+}
+
 type BoundTrigger struct {
 	ID      uuid.UUID
 	Trigger normalized.Trigger `validate:"required"`
-	Why     string             `validate:"required"`
+	UnboundTrigger
 }
 
 func NewBoundCause() BoundCause {
@@ -152,7 +160,7 @@ type Service struct {
 	triggerStore triggerStore
 }
 
-func (s *Service) BindTrigger(ctx context.Context, reviewID uuid.UUID, triggerID uuid.UUID, boundTrigger BoundTrigger) error {
+func (s *Service) BindTrigger(ctx context.Context, reviewID uuid.UUID, triggerID uuid.UUID, unboundTrigger UnboundTrigger) error {
 	_, err := s.reviewStore.Get(ctx, reviewID)
 	if err != nil {
 		return fmt.Errorf("failed to get review: %w", err)
@@ -167,12 +175,12 @@ func (s *Service) BindTrigger(ctx context.Context, reviewID uuid.UUID, triggerID
 	if err != nil {
 		return fmt.Errorf("failed to get action for binding trigger: %w", err)
 	}
-	_, ok := doer.(func(Review, normalized.Trigger, BoundTrigger) (Review, error))
+	_, ok := doer.(func(Review, normalized.Trigger, UnboundTrigger) (Review, error))
 	if !ok {
 		return fmt.Errorf("failed to cast action for binding trigger: %w", err)
 	}
 
-	// review, err = do(review, trigger, boundTrigger)
+	// review, err = do(review, trigger, unboundTrigger)
 	// if err != nil {
 	// 	return fmt.Errorf("failed binding trigger to review: %w", err)
 	// }

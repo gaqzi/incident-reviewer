@@ -55,16 +55,16 @@ func TestActionMapper(t *testing.T) {
 
 		doer, err := mapper.Get("BindTrigger")
 		require.NoError(t, err)
-		do, ok := doer.(func(Review, normalized.Trigger, BoundTrigger) (Review, error))
+		do, ok := doer.(func(Review, normalized.Trigger, UnboundTrigger) (Review, error))
 		require.True(t, ok)
 
 		trigger := normalized.Trigger{Name: "Something"}
-		review, err := do(Review{}, trigger, BoundTrigger{Why: "a good reason"})
+		review, err := do(Review{}, trigger, UnboundTrigger{Why: "a good reason"})
 		require.NoError(t, err)
 
 		require.Equal(
 			t,
-			Review{BoundTriggers: []BoundTrigger{{Trigger: trigger, Why: "a good reason"}}},
+			Review{BoundTriggers: []BoundTrigger{{Trigger: trigger, UnboundTrigger: UnboundTrigger{Why: "a good reason"}}}},
 			review,
 			"expected the contributing trigger to have been set on the BoundTrigger and then added to the Review",
 		)

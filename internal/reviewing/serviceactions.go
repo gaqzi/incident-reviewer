@@ -34,9 +34,8 @@ func reviewServiceActions() *action.Mapper {
 
 		return r.updateTimestamps(), nil
 	})
-	m.Add("BindTrigger", func(r Review, t normalized.Trigger, bt BoundTrigger) (Review, error) {
-		bt.Trigger = t
-		return r.BindTrigger(bt)
+	m.Add("BindTrigger", func(r Review, t normalized.Trigger, ubt UnboundTrigger) (Review, error) {
+		return r.BindTrigger(t, ubt)
 	})
 
 	return m
