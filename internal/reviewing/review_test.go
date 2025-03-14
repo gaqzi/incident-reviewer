@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
@@ -736,9 +737,11 @@ func TestReview_BindTrigger(t *testing.T) {
 		bt := a.BoundTrigger().IsNotSaved().Build()
 
 		actual, err := r.BindTrigger(bt)
+
 		require.NoError(t, err)
-		require.NotEmpty(t, actual.BoundTriggers[0].ID)
-		require.NotEqual(t, bt.ID, actual.BoundTriggers[0].ID)
+		assert.NotEqual(t, bt.ID, actual.BoundTriggers[0].ID)
+		require.NotEmpty(t, actual.BoundTriggers[0].ID, "expected to have set the ID when binding, overwriting any existing IDs")
+
 		require.Equal(t, actual, a.Review().WithBoundTrigger(a.BoundTrigger().WithID(actual.BoundTriggers[0].ID).Build()))
 		// when saving a valid trigger that hasn't been saved (i.e. it doesn't have an ID yet) it sets an id and then adds it to the list of bound triggers
 	})

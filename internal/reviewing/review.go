@@ -113,6 +113,8 @@ func (r Review) UpdateBoundContributingCause(o BoundCause) (Review, error) {
 }
 
 func (r Review) BindTrigger(bt BoundTrigger) (Review, error) {
+	bt.ID = uuid.Must(uuid.NewV7())
+
 	r.BoundTriggers = append(r.BoundTriggers, bt)
 
 	return r, nil
