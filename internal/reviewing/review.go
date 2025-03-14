@@ -113,7 +113,7 @@ func (r Review) UpdateBoundContributingCause(o BoundCause) (Review, error) {
 }
 
 func (r Review) BindTrigger(bt BoundTrigger) (Review, error) {
-	// r.BoundTriggers = append(r.BoundTriggers, bt)
+	r.BoundTriggers = append(r.BoundTriggers, bt)
 
 	return r, nil
 }
@@ -126,10 +126,9 @@ type BoundCause struct {
 }
 
 type BoundTrigger struct {
-	ID              uuid.UUID
-	Trigger         normalized.Trigger `validate:"required"`
-	Why             string             `validate:"required"`
-	IsProximalCause bool
+	ID      uuid.UUID
+	Trigger normalized.Trigger `validate:"required"`
+	Why     string             `validate:"required"`
 }
 
 func NewBoundCause() BoundCause {

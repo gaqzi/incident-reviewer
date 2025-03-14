@@ -110,7 +110,8 @@ func (b BuilderReview) WithContributingCause(rcs ...reviewing.BoundCause) Builde
 }
 
 func (b BuilderReview) WithBoundTrigger(rt reviewing.BoundTrigger) BuilderReview {
-	b.r.
+	b.r.BoundTriggers = append(b.r.BoundTriggers, rt)
+	return b
 }
 
 type BuilderBoundCause struct {
@@ -177,6 +178,11 @@ func (b BuilderBoundTrigger) IsNotSaved() BuilderBoundTrigger {
 
 func (b BuilderBoundTrigger) Build() reviewing.BoundTrigger {
 	return b.bt
+}
+
+func (b BuilderBoundTrigger) WithID(id uuid.UUID) BuilderBoundTrigger {
+	b.bt.ID = id
+	return b
 }
 
 func BoundTrigger() BuilderBoundTrigger {
