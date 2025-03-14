@@ -34,7 +34,7 @@ type reviewingService interface {
 	BindContributingCause(ctx context.Context, reviewID uuid.UUID, causeID uuid.UUID, boundCause reviewing.BoundCause) error
 	GetBoundContributingCause(ctx context.Context, reviewID uuid.UUID, boundCauseID uuid.UUID) (reviewing.BoundCause, error)
 	UpdateBoundContributingCause(ctx context.Context, reviewID uuid.UUID, boundCause reviewing.BoundCause) (reviewing.BoundCause, error)
-	BindTrigger(ctx context.Context, reviewID uuid.UUID, triggerID uuid.UUID, trigger reviewing.BoundTrigger) error
+	BindTrigger(ctx context.Context, reviewID uuid.UUID, triggerID uuid.UUID, trigger reviewing.UnboundTrigger) error
 }
 
 type causeAller interface {
@@ -652,7 +652,7 @@ func (a *reviewsHandler) BindTrigger(w http.ResponseWriter, r *http.Request) {
 		r.Context(),
 		reviewID,
 		triggerForm.TriggerID,
-		reviewing.BoundTrigger{Why: triggerForm.Why},
+		reviewing.UnboundTrigger{Why: triggerForm.Why},
 	); err != nil {
 		slog.Error("failed to bind trigger", "reviewID", reviewID, "error", err)
 		h.WriteHeader(http.StatusBadRequest)

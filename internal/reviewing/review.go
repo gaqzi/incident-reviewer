@@ -161,12 +161,12 @@ type Service struct {
 }
 
 func (s *Service) BindTrigger(ctx context.Context, reviewID uuid.UUID, triggerID uuid.UUID, unboundTrigger UnboundTrigger) error {
-	_, err := s.reviewStore.Get(ctx, reviewID)
+	review, err := s.reviewStore.Get(ctx, reviewID)
 	if err != nil {
 		return fmt.Errorf("failed to get review: %w", err)
 	}
 
-	_, err = s.triggerStore.Get(ctx, triggerID)
+	trigger, err := s.triggerStore.Get(ctx, triggerID)
 	if err != nil {
 		return fmt.Errorf("failed to get trigger: %w", err)
 	}
@@ -175,15 +175,15 @@ func (s *Service) BindTrigger(ctx context.Context, reviewID uuid.UUID, triggerID
 	if err != nil {
 		return fmt.Errorf("failed to get action for binding trigger: %w", err)
 	}
-	_, ok := doer.(func(Review, normalized.Trigger, UnboundTrigger) (Review, error))
+	do, ok := doer.(func(Review, normalized.Trigger, UnboundTrigger) (Review, error))
 	if !ok {
 		return fmt.Errorf("failed to cast action for binding trigger: %w", err)
 	}
 
-	// review, err = do(review, trigger, unboundTrigger)
-	// if err != nil {
-	// 	return fmt.Errorf("failed binding trigger to review: %w", err)
-	// }
+	review, err = do(review, trigger, unboundTrigger)
+	if err != nil {
+		return fmt.Errorf("failed binding trigger to review: %w", err)
+	}
 	//
 	// _, err = s.Save(ctx, review)
 	// if err != nil {

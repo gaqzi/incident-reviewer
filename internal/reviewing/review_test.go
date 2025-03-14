@@ -447,25 +447,24 @@ func TestService_BindTrigger(t *testing.T) {
 
 		actual := service.BindTrigger(context.Background(), review.ID, normalizedTrigger.ID, unboundTrigger)
 
-		require.ErrorContains(t, actual, "failed to add trigger to review:")
+		require.ErrorContains(t, actual, "failed binding trigger to review:")
 	})
-	//
-	// t.Run("when both review and contributing cause are known bind it", func(t *testing.T) {
-	// 	review := a.Review().Build()
-	// 	cause := a.ContributingCause().Build()
-	// 	boundCause := a.BoundCause().WithCause(cause).Build()
-	// 	service := newService().
-	// 		getReview(review).
-	// 		getCause(boundCause.Cause).
-	// 		saveAction(review).
-	// 		bindContributingCauseAction(review, cause, boundCause).
-	// 		saveReview(review).
-	// 		Build(t)
-	// 	ctx := context.Background()
-	//
-	// 	actual := service.BindTrigger(ctx, review.ID, cause.ID, boundCause)
-	// 	require.NoError(t, actual, "expected to have bound the cause to the review successfully")
-	// })
+
+	t.Run("when both review and normalized triggers are known bind them", func(t *testing.T) {
+		review := a.Review().Build()
+		normalizedTrigger := a.NormalizedTrigger().Build()
+		unboundTrigger := a.UnboundTrigger().Build()
+		service := newService().
+			getReview(review).
+			getTrigger(normalizedTrigger).
+			bindTriggerAction(normalizedTrigger, unboundTrigger).
+			saveReview(review).
+			Build(t)
+		ctx := context.Background()
+		actual := service.BindTrigger(ctx, review.ID, cause.ID, boundCause)
+		// TODO assert actual has the new trigger bound to it
+		require.NoError(t, actual, "expected to have bound the cause to the review successfully")
+	})
 }
 
 func TestService_GetBoundContributingCause(t *testing.T) {
