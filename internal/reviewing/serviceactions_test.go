@@ -64,7 +64,7 @@ func TestActionMapper(t *testing.T) {
 
 		require.Equal(
 			t,
-			Review{BoundTriggers: []BoundTrigger{{Trigger: trigger, UnboundTrigger: UnboundTrigger{Why: "a good reason"}}}},
+			Review{BoundTriggers: []BoundTrigger{{ID: review.BoundTriggers[0].ID, Trigger: trigger, UnboundTrigger: UnboundTrigger{Why: "a good reason"}}}},
 			review,
 			"expected the contributing trigger to have been set on the BoundTrigger and then added to the Review",
 		)

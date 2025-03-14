@@ -165,7 +165,7 @@ type BuilderBoundTrigger struct {
 
 func (b BuilderBoundTrigger) IsSaved() BuilderBoundTrigger {
 	b.bt.ID = uuid.MustParse("0193f6e0-a83b-71aa-a712-b0f7e0521108")
-	b.bt.Why = "because"
+	b.bt.UnboundTrigger = UnboundTrigger().Build()
 	b.bt.Trigger = NormalizedTrigger().Build()
 
 	return b

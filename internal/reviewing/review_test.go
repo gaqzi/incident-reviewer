@@ -232,6 +232,18 @@ func (b builderService) updateBoundContributingCauseAction(er reviewing.Review, 
 	return b
 }
 
+func (b builderService) bindTriggerActionFail(err ...error) builderService {
+	if err == nil {
+		err = append(err, errors.New("uh-oh"))
+	}
+
+	b.actionMapper.Add("BindTrigger", func(_ reviewing.Review, _ normalized.Trigger, _ reviewing.UnboundTrigger) (reviewing.Review, error) {
+		return reviewing.Review{}, err[0]
+	})
+
+	return b
+}
+
 func TestService_Save(t *testing.T) {
 	t.Run("wraps any error from collaborating with action mapper", func(t *testing.T) {
 		service := newService().
@@ -430,6 +442,7 @@ func TestService_BindTrigger(t *testing.T) {
 		service := newService().
 			getReview(review).
 			getTrigger(normalizedTrigger).
+			bindTriggerActionFail().
 			Build(t)
 
 		actual := service.BindTrigger(context.Background(), review.ID, normalizedTrigger.ID, unboundTrigger)
