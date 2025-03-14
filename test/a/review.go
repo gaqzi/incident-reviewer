@@ -189,3 +189,20 @@ func BoundTrigger() BuilderBoundTrigger {
 	return BuilderBoundTrigger{}.
 		IsSaved()
 }
+
+type BuilderUnboundTrigger struct {
+	but reviewing.UnboundTrigger
+}
+
+func (b BuilderUnboundTrigger) Build() reviewing.UnboundTrigger {
+	return b.but
+}
+
+func (b BuilderUnboundTrigger) WithWhy(why string) BuilderUnboundTrigger {
+	b.but.Why = why
+	return b
+}
+
+func UnboundTrigger() BuilderUnboundTrigger {
+	return BuilderUnboundTrigger{}.WithWhy("something")
+}

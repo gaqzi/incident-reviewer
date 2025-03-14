@@ -400,7 +400,7 @@ func TestService_BindTrigger(t *testing.T) {
 			Build(t)
 		ctx := context.Background()
 
-		actual := service.BindTrigger(ctx, uuid.Nil, uuid.Nil, a.BoundTrigger().Build())
+		actual := service.BindTrigger(ctx, uuid.Nil, uuid.Nil, a.UnboundTrigger().Build())
 
 		require.Error(t, actual, "expected an error since we haven't stored any reviews")
 		require.ErrorContainsf(t, actual, "failed to get review:", "so we know we got the correct error")
@@ -417,7 +417,7 @@ func TestService_BindTrigger(t *testing.T) {
 			context.Background(),
 			review.ID,
 			uuid.Nil,
-			a.BoundTrigger().Build(),
+			a.UnboundTrigger().Build(),
 		)
 
 		require.ErrorContains(t, actual, "failed to get trigger:")
@@ -425,13 +425,14 @@ func TestService_BindTrigger(t *testing.T) {
 
 	t.Run("it returns any errors when adding the trigger to the review", func(t *testing.T) {
 		review := a.Review().Build()
-		boundTrigger := a.BoundTrigger().Build()
+		unboundTrigger := a.UnboundTrigger().Build()
+		normalizedTrigger := a.NormalizedTrigger().Build()
 		service := newService().
 			getReview(review).
-			getTrigger(boundTrigger.Trigger).
+			getTrigger(normalizedTrigger).
 			Build(t)
 
-		actual := service.BindTrigger(context.Background(), review.ID, boundTrigger.Trigger.ID, boundTrigger)
+		actual := service.BindTrigger(context.Background(), review.ID, normalizedTrigger.ID, unboundTrigger)
 
 		require.ErrorContains(t, actual, "failed to add trigger to review:")
 	})
@@ -736,7 +737,7 @@ func TestReview_BindTrigger(t *testing.T) {
 		r := a.Review().Build()
 		bt := a.BoundTrigger().IsNotSaved().Build()
 
-		actual, err := r.BindTrigger(bt)
+		actual, err := r.BindTrigger(a.NormalizedTrigger().Build(), a.UnboundTrigger().Build())
 
 		require.NoError(t, err)
 		assert.NotEqual(t, bt.ID, actual.BoundTriggers[0].ID)
