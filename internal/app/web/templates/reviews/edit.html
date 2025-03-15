@@ -3,7 +3,7 @@
         <form method="POST" action="/reviews/{{ .ID }}/edit">
             <input type="hidden" name="_method" value="put">
             <input type="hidden" name="id" value="{{ .ID }}">
-            {{ template "review-fields" . }}
+            {{ template "partials/reviews/_review-fields.html" . }}
 
             <button type="submit">Update</button>
         </form>
