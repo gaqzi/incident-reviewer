@@ -127,7 +127,7 @@ func TestReviewing(t *testing.T) {
 			for _, text := range innerTexts {
 				text = strings.TrimSpace(text)
 				if strings.HasPrefix(text, "Third party outage") {
-					// Turns out, selecting by the value (at least when it's this long) breaks in firefox, so select it by the value instead of label.
+					// Turns out, selecting by the text (at least when it's this long) breaks in firefox, so select it by the value instead of label.
 					chosenOption, err = opt.GetAttribute("value")
 					require.NoError(t, err, "failed to get value for option")
 					break
