@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 
+	"github.com/gaqzi/incident-reviewer/internal/normalized"
 	"github.com/gaqzi/incident-reviewer/internal/normalized/contributing"
 )
 
@@ -22,6 +23,7 @@ func TestActionMapper(t *testing.T) {
 				"BindContributingCause",
 				"UpdateBoundContributingCause",
 				"Save",
+				"BindTrigger",
 			},
 			mapper.All(),
 			"expected all causes to be listed here so we catch when we add new or remove one",
@@ -45,6 +47,26 @@ func TestActionMapper(t *testing.T) {
 			Review{BoundCauses: []BoundCause{{ID: review.BoundCauses[0].ID, Cause: cause}}},
 			review,
 			"expected the contributing cause to have been set on the BoundCause and then added to the Review",
+		)
+	})
+
+	t.Run("BindTrigger sets the normalized.Trigger on the BoundTrigger before adding it to the Review and sets a valid ID if not provided", func(t *testing.T) {
+		mapper := reviewServiceActions()
+
+		doer, err := mapper.Get("BindTrigger")
+		require.NoError(t, err)
+		do, ok := doer.(func(Review, normalized.Trigger, UnboundTrigger) (Review, error))
+		require.True(t, ok)
+
+		trigger := normalized.Trigger{Name: "Something"}
+		review, err := do(Review{}, trigger, UnboundTrigger{Why: "a good reason"})
+		require.NoError(t, err)
+
+		require.Equal(
+			t,
+			Review{BoundTriggers: []BoundTrigger{{ID: review.BoundTriggers[0].ID, Trigger: trigger, UnboundTrigger: UnboundTrigger{Why: "a good reason"}}}},
+			review,
+			"expected the contributing trigger to have been set on the BoundTrigger and then added to the Review",
 		)
 	})
 
