@@ -184,11 +184,11 @@ func (s *Service) BindTrigger(ctx context.Context, reviewID uuid.UUID, triggerID
 	if err != nil {
 		return fmt.Errorf("failed binding trigger to review: %w", err)
 	}
-	//
-	// _, err = s.Save(ctx, review)
-	// if err != nil {
-	// 	return fmt.Errorf("failed to save review: %w", err)
-	// }
+
+	_, err = s.Save(ctx, review)
+	if err != nil {
+		return fmt.Errorf("failed to save review: %w", err)
+	}
 
 	return nil
 }

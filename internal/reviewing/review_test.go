@@ -244,6 +244,18 @@ func (b builderService) bindTriggerActionFail(err ...error) builderService {
 	return b
 }
 
+func (b builderService) bindTriggerAction(er reviewing.Review, et normalized.Trigger, eut reviewing.UnboundTrigger) builderService {
+	b.actionMapper.Add("BindTrigger", func(r reviewing.Review, t normalized.Trigger, ut reviewing.UnboundTrigger) (reviewing.Review, error) {
+		if !reflect.DeepEqual(er, r) ||
+			!reflect.DeepEqual(et, t) ||
+			!reflect.DeepEqual(eut, ut) {
+			return reviewing.Review{}, errors.New("the passed in values don't match the expected values")
+		}
+		return r, nil
+	})
+	return b
+}
+
 func TestService_Save(t *testing.T) {
 	t.Run("wraps any error from collaborating with action mapper", func(t *testing.T) {
 		service := newService().
@@ -457,12 +469,13 @@ func TestService_BindTrigger(t *testing.T) {
 		service := newService().
 			getReview(review).
 			getTrigger(normalizedTrigger).
-			bindTriggerAction(normalizedTrigger, unboundTrigger).
+			bindTriggerAction(review, normalizedTrigger, unboundTrigger).
+			saveAction(review).
 			saveReview(review).
 			Build(t)
 		ctx := context.Background()
-		actual := service.BindTrigger(ctx, review.ID, cause.ID, boundCause)
-		// TODO assert actual has the new trigger bound to it
+
+		actual := service.BindTrigger(ctx, review.ID, normalizedTrigger.ID, unboundTrigger)
 		require.NoError(t, actual, "expected to have bound the cause to the review successfully")
 	})
 }
