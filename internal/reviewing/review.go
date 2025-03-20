@@ -4,10 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/gaqzi/incident-reviewer/internal/normalized"
 	"slices"
 	"strings"
 	"time"
+
+	"github.com/gaqzi/incident-reviewer/internal/normalized"
 
 	"github.com/google/uuid"
 
@@ -25,7 +26,8 @@ type Review struct {
 	ReportProximalCause string    `validate:"required"`
 	ReportTrigger       string    `validate:"required"`
 
-	BoundCauses []BoundCause
+	BoundCauses   []BoundCause
+	BoundTriggers []BoundTrigger
 
 	CreatedAt time.Time
 	UpdatedAt time.Time
@@ -110,6 +112,18 @@ func (r Review) UpdateBoundContributingCause(o BoundCause) (Review, error) {
 	return r, nil
 }
 
+func (r Review) BindTrigger(t normalized.Trigger, ubt UnboundTrigger) (Review, error) {
+	bt := BoundTrigger{
+		ID:             uuid.Must(uuid.NewV7()),
+		Trigger:        t,
+		UnboundTrigger: ubt,
+	}
+
+	r.BoundTriggers = append(r.BoundTriggers, bt)
+
+	return r, nil
+}
+
 type BoundCause struct {
 	ID              uuid.UUID
 	Cause           contributing.Cause `validate:"required"`
@@ -117,11 +131,14 @@ type BoundCause struct {
 	IsProximalCause bool
 }
 
+type UnboundTrigger struct {
+	Why string `validate:"required"`
+}
+
 type BoundTrigger struct {
-	ID              uuid.UUID
-	Trigger         normalized.Trigger `validate:"required"`
-	Why             string             `validate:"required"`
-	IsProximalCause bool
+	ID      uuid.UUID
+	Trigger normalized.Trigger `validate:"required"`
+	UnboundTrigger
 }
 
 func NewBoundCause() BoundCause {
@@ -143,7 +160,7 @@ type Service struct {
 	triggerStore triggerStore
 }
 
-func (s *Service) BindTrigger(ctx context.Context, reviewID uuid.UUID, triggerID uuid.UUID, boundTrigger BoundTrigger) error {
+func (s *Service) BindTrigger(ctx context.Context, reviewID uuid.UUID, triggerID uuid.UUID, unboundTrigger UnboundTrigger) error {
 	review, err := s.reviewStore.Get(ctx, reviewID)
 	if err != nil {
 		return fmt.Errorf("failed to get review: %w", err)
@@ -158,20 +175,20 @@ func (s *Service) BindTrigger(ctx context.Context, reviewID uuid.UUID, triggerID
 	if err != nil {
 		return fmt.Errorf("failed to get action for binding trigger: %w", err)
 	}
-	do, ok := doer.(func(Review, normalized.Trigger, BoundTrigger) (Review, error))
+	do, ok := doer.(func(Review, normalized.Trigger, UnboundTrigger) (Review, error))
 	if !ok {
 		return fmt.Errorf("failed to cast action for binding trigger: %w", err)
 	}
 
-	review, err = do(review, trigger, boundTrigger)
+	review, err = do(review, trigger, unboundTrigger)
 	if err != nil {
 		return fmt.Errorf("failed binding trigger to review: %w", err)
 	}
-
-	_, err = s.Save(ctx, review)
-	if err != nil {
-		return fmt.Errorf("failed to save review: %w", err)
-	}
+	//
+	// _, err = s.Save(ctx, review)
+	// if err != nil {
+	// 	return fmt.Errorf("failed to save review: %w", err)
+	// }
 
 	return nil
 }
@@ -184,11 +201,12 @@ func WithActionMapper(mapper *action.Mapper) Option {
 	}
 }
 
-func NewService(reviewStore Storage, causeStore causeStore, opts ...Option) *Service {
+func NewService(reviewStore Storage, causeStore causeStore, triggerStore triggerStore, opts ...Option) *Service {
 	s := Service{
-		reviewStore: reviewStore,
-		causeStore:  causeStore,
-		action:      reviewServiceActions(),
+		reviewStore:  reviewStore,
+		causeStore:   causeStore,
+		triggerStore: triggerStore,
+		action:       reviewServiceActions(),
 	}
 
 	for _, opt := range opts {

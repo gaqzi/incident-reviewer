@@ -109,6 +109,11 @@ func (b BuilderReview) WithContributingCause(rcs ...reviewing.BoundCause) Builde
 	return b
 }
 
+func (b BuilderReview) WithBoundTrigger(rt reviewing.BoundTrigger) BuilderReview {
+	b.r.BoundTriggers = append(b.r.BoundTriggers, rt)
+	return b
+}
+
 type BuilderBoundCause struct {
 	rc reviewing.BoundCause
 }
@@ -158,10 +163,15 @@ type BuilderBoundTrigger struct {
 	bt reviewing.BoundTrigger
 }
 
-func (b BuilderBoundTrigger) IsValid() BuilderBoundTrigger {
+func (b BuilderBoundTrigger) IsSaved() BuilderBoundTrigger {
 	b.bt.ID = uuid.MustParse("0193f6e0-a83b-71aa-a712-b0f7e0521108")
-	b.bt.Why = "because"
+	b.bt.UnboundTrigger = UnboundTrigger().Build()
 	b.bt.Trigger = NormalizedTrigger().Build()
+
+	return b
+}
+func (b BuilderBoundTrigger) IsNotSaved() BuilderBoundTrigger {
+	b.bt.ID = uuid.Nil
 
 	return b
 }
@@ -170,7 +180,29 @@ func (b BuilderBoundTrigger) Build() reviewing.BoundTrigger {
 	return b.bt
 }
 
+func (b BuilderBoundTrigger) WithID(id uuid.UUID) BuilderBoundTrigger {
+	b.bt.ID = id
+	return b
+}
+
 func BoundTrigger() BuilderBoundTrigger {
 	return BuilderBoundTrigger{}.
-		IsValid()
+		IsSaved()
+}
+
+type BuilderUnboundTrigger struct {
+	but reviewing.UnboundTrigger
+}
+
+func (b BuilderUnboundTrigger) Build() reviewing.UnboundTrigger {
+	return b.but
+}
+
+func (b BuilderUnboundTrigger) WithWhy(why string) BuilderUnboundTrigger {
+	b.but.Why = why
+	return b
+}
+
+func UnboundTrigger() BuilderUnboundTrigger {
+	return BuilderUnboundTrigger{}.WithWhy("something")
 }

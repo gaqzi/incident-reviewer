@@ -7,30 +7,32 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	"github.com/gaqzi/incident-reviewer/internal/normalized"
 	"github.com/gaqzi/incident-reviewer/internal/normalized/contributing"
 	"github.com/gaqzi/incident-reviewer/internal/platform/action"
 	"github.com/gaqzi/incident-reviewer/internal/reviewing"
 	"github.com/gaqzi/incident-reviewer/test/a"
 )
 
-type storageMock struct {
+type reviewStorageMock struct {
 	mock.Mock
 }
 
-func (m *storageMock) Save(ctx context.Context, review reviewing.Review) (reviewing.Review, error) {
+func (m *reviewStorageMock) Save(ctx context.Context, review reviewing.Review) (reviewing.Review, error) {
 	args := m.Called(ctx, review)
 	return args.Get(0).(reviewing.Review), args.Error(1)
 }
 
-func (m *storageMock) Get(ctx context.Context, reviewID uuid.UUID) (reviewing.Review, error) {
+func (m *reviewStorageMock) Get(ctx context.Context, reviewID uuid.UUID) (reviewing.Review, error) {
 	args := m.Called(ctx, reviewID)
 	return args.Get(0).(reviewing.Review), args.Error(1)
 }
 
-func (m *storageMock) All(ctx context.Context) ([]reviewing.Review, error) {
+func (m *reviewStorageMock) All(ctx context.Context) ([]reviewing.Review, error) {
 	args := m.Called(ctx)
 	return args.Get(0).([]reviewing.Review), args.Error(1)
 }
@@ -44,17 +46,29 @@ func (m *causeStorageMock) Get(ctx context.Context, id uuid.UUID) (contributing.
 	return args.Get(0).(contributing.Cause), args.Error(1)
 }
 
+type triggerStorageMock struct {
+	mock.Mock
+}
+
+func (m *triggerStorageMock) Get(ctx context.Context, triggerID uuid.UUID) (normalized.Trigger, error) {
+	args := m.Called(ctx, triggerID)
+
+	return args.Get(0).(normalized.Trigger), args.Error(1)
+}
+
 type builderService struct {
-	reviewStorage *storageMock
-	causeStorage  *causeStorageMock
-	actionMapper  *action.Mapper
+	reviewStorage  *reviewStorageMock
+	causeStorage   *causeStorageMock
+	triggerStorage *triggerStorageMock
+	actionMapper   *action.Mapper
 }
 
 func newService() builderService {
 	return builderService{
-		reviewStorage: new(storageMock),
-		causeStorage:  new(causeStorageMock),
-		actionMapper:  &action.Mapper{},
+		reviewStorage:  new(reviewStorageMock),
+		causeStorage:   new(causeStorageMock),
+		triggerStorage: new(triggerStorageMock),
+		actionMapper:   &action.Mapper{},
 	}
 }
 
@@ -64,7 +78,9 @@ func (b builderService) Build(t *testing.T) *reviewing.Service {
 	rs.Test(t)
 	cs := b.causeStorage
 	cs.Test(t)
-	return reviewing.NewService(rs, cs, reviewing.WithActionMapper(b.actionMapper))
+	ts := b.triggerStorage
+	ts.Test(t)
+	return reviewing.NewService(rs, cs, ts, reviewing.WithActionMapper(b.actionMapper))
 }
 
 func (b builderService) getReview(r reviewing.Review) builderService {
@@ -147,6 +163,22 @@ func (b builderService) getCauseFail(err ...error) builderService {
 	return b
 }
 
+func (b builderService) getTrigger(t normalized.Trigger) builderService {
+	b.triggerStorage.On("Get", mock.Anything, t.ID).Return(t, nil)
+
+	return b
+}
+
+func (b builderService) getTriggerFail(err ...error) builderService {
+	if err == nil {
+		err = append(err, errors.New("uh-oh"))
+	}
+
+	b.triggerStorage.On("Get", mock.Anything, mock.Anything).Return(normalized.Trigger{}, err[0])
+
+	return b
+}
+
 func (b builderService) getCause(cause contributing.Cause) builderService {
 	b.causeStorage.On("Get", mock.Anything, cause.ID).Return(cause, nil)
 
@@ -195,6 +227,18 @@ func (b builderService) updateBoundContributingCauseAction(er reviewing.Review, 
 		}
 
 		return r, nil
+	})
+
+	return b
+}
+
+func (b builderService) bindTriggerActionFail(err ...error) builderService {
+	if err == nil {
+		err = append(err, errors.New("uh-oh"))
+	}
+
+	b.actionMapper.Add("BindTrigger", func(_ reviewing.Review, _ normalized.Trigger, _ reviewing.UnboundTrigger) (reviewing.Review, error) {
+		return reviewing.Review{}, err[0]
 	})
 
 	return b
@@ -368,57 +412,57 @@ func TestService_BindTrigger(t *testing.T) {
 			Build(t)
 		ctx := context.Background()
 
-		actual := service.BindTrigger(ctx, uuid.Nil, uuid.Nil, a.BoundTrigger().Build())
+		actual := service.BindTrigger(ctx, uuid.Nil, uuid.Nil, a.UnboundTrigger().Build())
 
 		require.Error(t, actual, "expected an error since we haven't stored any reviews")
 		require.ErrorContainsf(t, actual, "failed to get review:", "so we know we got the correct error")
 	})
 
-	t.Run("when the contributing cause isn't known return the error from it", func(t *testing.T) {
+	t.Run("when the trigger isn't known return the error from it", func(t *testing.T) {
 		review := a.Review().Build()
 		service := newService().
 			getReview(review).
-			getCauseFail().
+			getTriggerFail().
 			Build(t)
 
-		actual := service.BindContributingCause(
+		actual := service.BindTrigger(
 			context.Background(),
 			review.ID,
 			uuid.Nil,
-			a.BoundCause().Build(),
+			a.UnboundTrigger().Build(),
 		)
 
-		require.ErrorContains(t, actual, "failed to get contributing cause:")
+		require.ErrorContains(t, actual, "failed to get trigger:")
 	})
 
-	t.Run("it returns any errors when adding the cause to the review", func(t *testing.T) {
+	t.Run("it returns any errors when adding the trigger to the review", func(t *testing.T) {
 		review := a.Review().Build()
-		boundCause := a.BoundCause().Build()
+		unboundTrigger := a.UnboundTrigger().Build()
+		normalizedTrigger := a.NormalizedTrigger().Build()
 		service := newService().
 			getReview(review).
-			getCause(boundCause.Cause).
-			bindContributingCauseActionFail().
+			getTrigger(normalizedTrigger).
+			bindTriggerActionFail().
 			Build(t)
 
-		actual := service.BindContributingCause(context.Background(), review.ID, boundCause.Cause.ID, boundCause)
+		actual := service.BindTrigger(context.Background(), review.ID, normalizedTrigger.ID, unboundTrigger)
 
-		require.ErrorContains(t, actual, "failed to add contributing cause to review:")
+		require.ErrorContains(t, actual, "failed binding trigger to review:")
 	})
 
-	t.Run("when both review and contributing cause are known bind it", func(t *testing.T) {
+	t.Run("when both review and normalized triggers are known bind them", func(t *testing.T) {
 		review := a.Review().Build()
-		cause := a.ContributingCause().Build()
-		boundCause := a.BoundCause().WithCause(cause).Build()
+		normalizedTrigger := a.NormalizedTrigger().Build()
+		unboundTrigger := a.UnboundTrigger().Build()
 		service := newService().
 			getReview(review).
-			getCause(boundCause.Cause).
-			saveAction(review).
-			bindContributingCauseAction(review, cause, boundCause).
+			getTrigger(normalizedTrigger).
+			bindTriggerAction(normalizedTrigger, unboundTrigger).
 			saveReview(review).
 			Build(t)
 		ctx := context.Background()
-
-		actual := service.BindContributingCause(ctx, review.ID, cause.ID, boundCause)
+		actual := service.BindTrigger(ctx, review.ID, cause.ID, boundCause)
+		// TODO assert actual has the new trigger bound to it
 		require.NoError(t, actual, "expected to have bound the cause to the review successfully")
 	})
 }
@@ -447,7 +491,7 @@ func TestService_GetBoundContributingCause(t *testing.T) {
 
 	t.Run("when it's found it returns the reviewing.BoundCause", func(t *testing.T) {
 		boundCause := a.BoundCause().Build()
-		store := new(storageMock)
+		store := new(reviewStorageMock)
 		store.Test(t)
 		review := a.Review().WithContributingCause(boundCause).Build()
 		service := newService().
@@ -507,9 +551,12 @@ func TestService_UpdateBoundContributingCause(t *testing.T) {
 		service := newService().
 			getReview(review).
 			getCause(review.BoundCauses[0].Cause).
-			updateBoundContributingCauseAction(review, updatedCause). // doesn't update anything
-			saveAction(review). // because it didn't update anything we just get the original passed in again
-			saveReview((func(r reviewing.Review) reviewing.Review { // return something different to show that we're returning whatever is successfully saved
+			// doesn't update anything
+			// because it didn't update anything we just get the original passed in again
+			// return something different to show that we're returning whatever is successfully saved
+			updateBoundContributingCauseAction(review, updatedCause).
+			saveAction(review).
+			saveReview((func(r reviewing.Review) reviewing.Review {
 				r.BoundCauses[0] = updatedCause
 				return r
 			})(review)).
@@ -694,5 +741,21 @@ func TestReview_UpdateBoundContributingCause(t *testing.T) {
 			actual.BoundCauses,
 			"expected the proximal cause to have been removed from the second cause",
 		)
+	})
+}
+
+func TestReview_BindTrigger(t *testing.T) {
+	t.Run("adds the bound trigger to the list of bound triggers", func(t *testing.T) {
+		r := a.Review().Build()
+		bt := a.BoundTrigger().IsNotSaved().Build()
+
+		actual, err := r.BindTrigger(a.NormalizedTrigger().Build(), a.UnboundTrigger().Build())
+
+		require.NoError(t, err)
+		assert.NotEqual(t, bt.ID, actual.BoundTriggers[0].ID)
+		require.NotEmpty(t, actual.BoundTriggers[0].ID, "expected to have set the ID when binding, overwriting any existing IDs")
+
+		require.Equal(t, actual, a.Review().WithBoundTrigger(a.BoundTrigger().WithID(actual.BoundTriggers[0].ID).Build()).Build())
+		// when saving a valid trigger that hasn't been saved (i.e. it doesn't have an ID yet) it sets an id and then adds it to the list of bound triggers
 	})
 }
