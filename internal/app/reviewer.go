@@ -11,8 +11,10 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/httplog/v2"
+	"github.com/google/uuid"
 
 	"github.com/gaqzi/incident-reviewer/internal/app/web"
+	"github.com/gaqzi/incident-reviewer/internal/normalized"
 	"github.com/gaqzi/incident-reviewer/internal/normalized/contributing"
 	contribstorage "github.com/gaqzi/incident-reviewer/internal/normalized/contributing/storage"
 	"github.com/gaqzi/incident-reviewer/internal/reviewing"
@@ -83,7 +85,18 @@ func Start(ctx context.Context, cfg Config) (*Server, error) {
 	r.Route("/contributing-causes", web.ContributingCausesHandler(causeService))
 
 	reviewStore := reviewstorage.NewMemoryStore()
-	reviewService := reviewing.NewService(reviewStore, causeService, nil)
+
+	triggerStore := normalized.NewTriggerMemoryStore()
+	trigger := normalized.Trigger{}
+	trigger.ID = uuid.MustParse("6A195282-04CA-4405-A6F1-678C525A001B")
+	trigger.Name = "Traffic increase"
+	trigger.Description = "More users than normal"
+	_, err = triggerStore.Save(ctx, trigger)
+	if err != nil {
+		return nil, fmt.Errorf("failed to add default trigger: %w", err)
+	}
+
+	reviewService := reviewing.NewService(reviewStore, causeService, triggerStore)
 	r.Route("/reviews", web.ReviewsHandler(reviewService, causeService))
 
 	go (func() {
