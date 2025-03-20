@@ -14,4 +14,10 @@
         </label>
         <button type="submit">Add</button>
     </form>
+
+    <ul class="listing">
+        {{ range .Data.BoundTriggers }}
+           <li>{{ .Data.BoundTrigger.Name}} - {{ .Data.BoundTrigger.Why }}</li>
+        {{ end }}
+    </ul>
 </section>

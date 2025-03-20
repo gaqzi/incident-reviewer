@@ -121,7 +121,8 @@ type ReviewBasic struct {
 	ReportTrigger       string    `form:"reportTrigger"`
 
 	// Related items that are not changed from the forms but by other calls
-	BoundCauses []BoundCauseBasic
+	BoundCauses   []BoundCauseBasic
+	BoundTriggers []BoundTriggerBasic
 
 	UpdatedAt time.Time
 	CreatedAt time.Time
@@ -154,6 +155,12 @@ type BoundCauseBasic struct {
 	Why             string
 	Category        string
 	IsProximalCause bool
+}
+
+type BoundTriggerBasic struct {
+	ID   uuid.UUID
+	Name string
+	Why  string
 }
 
 type ContributingCauseBasic struct {
@@ -628,7 +635,7 @@ func (a *reviewsHandler) BindTrigger(w http.ResponseWriter, r *http.Request) {
 
 	reviewID, err := uuid.Parse(r.PathValue("id"))
 	if err != nil {
-		slog.Error("failed to parse id for create contributing cause", "id", r.PathValue("id"), "error", err)
+		slog.Error("failed to parse id for create trigger", "id", r.PathValue("id"), "error", err)
 		h.WriteHeader(http.StatusBadRequest)
 		h.JustWriteString("invalid id")
 		return
@@ -679,8 +686,12 @@ func convertToHttpObjects(rs []reviewing.Review) []ReviewBasic {
 
 func convertToHttpObject(r reviewing.Review) ReviewBasic {
 	causes := make([]BoundCauseBasic, 0, len(r.BoundCauses))
+	triggers := make([]BoundTriggerBasic, 0, len(r.BoundTriggers))
 	for _, cause := range r.BoundCauses {
 		causes = append(causes, toBoundCauseBasic(cause))
+	}
+	for _, trigger := range r.BoundTriggers {
+		triggers = append(triggers, toBoundTriggerBasic(trigger))
 	}
 
 	return ReviewBasic{
@@ -693,10 +704,19 @@ func convertToHttpObject(r reviewing.Review) ReviewBasic {
 		ReportProximalCause: r.ReportProximalCause,
 		ReportTrigger:       r.ReportTrigger,
 
-		BoundCauses: causes,
+		BoundCauses:   causes,
+		BoundTriggers: triggers,
 
 		CreatedAt: r.CreatedAt,
 		UpdatedAt: r.UpdatedAt,
+	}
+}
+
+func toBoundTriggerBasic(trigger reviewing.BoundTrigger) BoundTriggerBasic {
+	return BoundTriggerBasic{
+		ID:   trigger.ID,
+		Name: trigger.Trigger.Name,
+		Why:  trigger.Why,
 	}
 }
 
