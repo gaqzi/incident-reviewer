@@ -1,13 +1,13 @@
 module github.com/gaqzi/incident-reviewer
 
-go 1.24.0
+go 1.24.1
 
 require (
 	github.com/donseba/go-htmx v1.12.0
 	github.com/donseba/go-partial v0.8.0
 	github.com/go-chi/chi/v5 v5.2.1
 	github.com/go-chi/httplog/v2 v2.1.1
-	github.com/go-playground/form/v4 v4.2.1
+	github.com/go-playground/form/v4 v4.2.2
 	github.com/go-playground/validator/v10 v10.25.0
 	github.com/go-sqlx/sqlx v1.3.8
 	github.com/google/uuid v1.6.0
@@ -79,11 +79,11 @@ require (
 	go.opentelemetry.io/otel/sdk v1.24.0 // indirect
 	go.opentelemetry.io/otel/trace v1.26.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	golang.org/x/crypto v0.32.0 // indirect
-	golang.org/x/net v0.34.0 // indirect
-	golang.org/x/sync v0.10.0 // indirect
-	golang.org/x/sys v0.29.0 // indirect
-	golang.org/x/text v0.21.0 // indirect
+	golang.org/x/crypto v0.35.0 // indirect
+	golang.org/x/net v0.36.0 // indirect
+	golang.org/x/sync v0.11.0 // indirect
+	golang.org/x/sys v0.30.0 // indirect
+	golang.org/x/text v0.22.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
