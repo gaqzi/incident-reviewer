@@ -1,46 +1,54 @@
 {{ define "review-fields" }}
-<ul>
+<style>
+    .list {
+        text-decoration: none;
+        width: 100%;
+        padding-inline-start: 0;
+    }
+    .list>li{
+        display: flex;
+        flex-direction: column;
+        margin-bottom: 1em;
+    }
+</style>
+<ul class="list">
     <li>
-        <label>
-            Report link:
-            <input type="url" name="url" value="{{ .URL }}" required>
-        </label>
+        <label for="url">Report link:</label>
+        <input type="url" id="url" name="url" value="{{ .URL }}" required>
+
     </li>
     <li>
-        <label>
-            Title:
-            <input type="text" name="title" value="{{ .Title }}" required>
-        </label>
+        <label for="title">Title:</label>
+        <input type="text" id="title" name="title" value="{{ .Title }}" required>
+
     </li>
     <li>
-        <label>
-            Description:
-            <textarea name="description" required>{{ .Description }}</textarea>
-        </label>
+        <label for="description">Description:</label>
+        <textarea id="description" name="description" required>{{ .Description }}</textarea>
+
     </li>
     <li>
-        <label>
-            Impact:
-            <textarea name="impact" required>{{ .Impact }}</textarea>
-        </label>
+        <label for="impact">Impact:</label>
+        <textarea id="impact" name="impact" required>{{ .Impact }}</textarea>
+
     </li>
     <li>
-        <label>
-            Where:
-            <textarea name="where" required>{{ .Where }}</textarea>
-        </label>
+        <label for="where">Where:</label>
+        <textarea id="where" name="where" required>{{ .Where }}</textarea>
+
     </li>
     <li>
-        <label>
+        <label for="reportProximalCause">
             Report <dfn title="The closest direct cause for the incident, often called the root cause">proximal cause</dfn>:
-            <textarea name="reportProximalCause" required>{{ .ReportProximalCause }}</textarea>
         </label>
+        <textarea id="reportProximalCause" name="reportProximalCause" required>{{ .ReportProximalCause }}</textarea>
+
     </li>
     <li>
-        <label>
+        <label for="reportTrigger">
             Report <dfn title="The change that lead to the proximal cause which lead to the incident">trigger</dfn>:
-            <textarea name="reportTrigger" required>{{ .ReportTrigger }}</textarea>
         </label>
+        <textarea id="reportTrigger" name="reportTrigger" required>{{ .ReportTrigger }}</textarea>
     </li>
 </ul>
 {{ end }}
