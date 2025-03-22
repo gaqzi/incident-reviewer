@@ -16,27 +16,6 @@ I need you to create a builder pattern implementation for testing in Go, followi
 10. When asked for a static UUID always return `uuid.MustParse("INVALID-UUID") // REPLACE ME WITH A STATIC UUID`
 11. DO NOT check if the ID is `uuid.Nil` when asked to create a static ID
 
-
-## For the Entity Named: [ENTITY_NAME]
-
-What are your specific concerns for this entity? Some examples might be:
-- Validation state (valid/invalid)
-- Persistence state (saved/not saved)
-- Special states related to your domain (approved/rejected, active/inactive, etc.)
-
-Please implement a builder pattern with these components:
-
-1. A struct named `Builder[ENTITY_NAME]` that holds the entity being built
-2. A constructor function named `[ENTITY_NAME]()` that returns a builder with your default concern(s) applied
-3. Concern-specific methods based on your needs:
-    - Example: `IsValid()`: Sets all required fields to pass validation
-    - Example: `IsSaved()`: Adds timestamps and other persistence markers
-    - All unimplemented concern methods should panic with a message until implemented
-4. Field-specific modifiers named `With[FieldName]()` for each important field
-5. A `Modify()` method that accepts functions to make custom modifications
-6. Relationship builders if needed (like `WithContributingCause()` in the example)
-7. A `Build()` method that returns the final entity
-
 ## Implementation Notes
 
 - Use UUIDs for IDs with constant values for reproducibility in tests
