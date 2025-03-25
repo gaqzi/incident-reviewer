@@ -232,7 +232,7 @@ func startPostgres(stopChan <-chan struct{}, doneChan chan<- struct{}, errChan c
 	// If 2min is not long enough for initial starts then change it, for now I'll guess it's good enough,
 	// but that's from sitting with a stable (and fast) internet connection… If needed I'll make it configurable later.
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
-	err, conn, done := test.StartPostgres(ctx)
+	conn, done, err := test.StartPostgres(ctx)
 	if err != nil {
 		errChan <- fmt.Errorf("failed to start postgres: %w", err)
 		cancel()

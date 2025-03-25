@@ -28,7 +28,7 @@ func StorageTest(t *testing.T, ctx context.Context, storeFactory func() reviewin
 			_, err := store.Save(ctx, incident)
 
 			require.Error(t, err, "expected to not have saved the object")
-			require.ErrorIs(t, err, storage.NoIDError)
+			require.ErrorIs(t, err, storage.ErrNoID)
 		})
 
 		t.Run("a review with an ID but nothing else set is stored", func(t *testing.T) {

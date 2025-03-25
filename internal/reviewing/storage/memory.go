@@ -22,7 +22,7 @@ func NewMemoryStore() *MemoryStore {
 
 func (s *MemoryStore) Save(_ context.Context, inc reviewing.Review) (reviewing.Review, error) {
 	if inc.ID == uuid.Nil {
-		return reviewing.Review{}, NoIDError
+		return reviewing.Review{}, ErrNoID
 	}
 
 	s.data[inc.ID] = inc
