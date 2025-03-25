@@ -3,7 +3,7 @@
 
     <ul class="listing">
         {{ range .Data.BoundCauses }}
-            {{ template "reviews/show/_contributing-cause-bound-li.html" "ReviewID" $.Data.ReviewID "ContributingCause" . }}
+            {{ template "partials/contributing-causes/_bound-li.html" map nil "ReviewID" $.Data.ReviewID "ContributingCause" . }}
         {{ end }}
     </ul>
 </contributing-causes>

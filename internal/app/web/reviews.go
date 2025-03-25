@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"html/template"
 	"log/slog"
 	"net/http"
 	"time"
@@ -58,6 +59,28 @@ func ReviewsHandler(service reviewingService, causeStore causeAller) func(chi.Ro
 	}
 
 	partials := &ppdefaults.PartialsWithCommon{FS: fsys, CommonDir: "partials"}
+	defaultTemplate := template.New("").Funcs(map[string]any{
+		"map": func(d map[string]any, args ...any) (map[string]any, error) {
+			if d == nil {
+				d = make(map[string]any, len(args)/2)
+			}
+
+			if oddArgs := len(args)%2 != 0; oddArgs {
+				return nil, fmt.Errorf("did not receive an even key/value pair of arguments for map: %s", args)
+			}
+
+			for i := 0; i < len(args); i += 2 {
+				key, ok := args[i].(string)
+				if !ok {
+					return nil, fmt.Errorf("argument %d is not a string: %q", i, args[i])
+				}
+
+				d[key] = args[i+1]
+			}
+
+			return d, nil
+		},
+	})
 	app := reviewsHandler{
 		htmx:       htmx.New(),
 		decoder:    form.NewDecoder(),
@@ -68,6 +91,7 @@ func ReviewsHandler(service reviewingService, causeStore causeAller) func(chi.Ro
 				WithDefaults(fsys).
 				TemplateLoader(ppdefaults.NewCachedLoader(&ppdefaults.TemplateByNameLoader{FS: fsys})).
 				PartialsFor(partials.Load).
+				TemplateConfig(defaultTemplate).
 				Build(),
 		),
 	}
@@ -402,28 +426,35 @@ func (a *reviewsHandler) BindContributingCause(w http.ResponseWriter, r *http.Re
 	}
 
 	httpReview := convertToHttpObject(review)
-	layout := a.layout(
-		partial.
-			NewID("contributing-causes", "templates/reviews/_contributing-causes.html").
-			SetFileSystem(templates).
-			AddData("Review", httpReview).
-			AddData("BoundCauses", httpReview.BoundCauses).
-			AddData("ContributingCauses", convertContributingCauseToHttpObjects(contributingCauses)).
-			AddData("ReviewID", reviewID).
-			AddData("ContributingCause", BoundCauseBasic{}).
-			With(partial.
-				NewID("BindContributingCause",
-					"templates/contributing-causes/binding/_new_form.html",
-					"templates/contributing-causes/binding/_causes-options.html").
-				SetFileSystem(templates),
-			).
-			With(partial.
-				NewID("bound-contributing-cause-li", "templates/reviews/__contributing-cause-bound-li.html").
-				SetFileSystem(templates),
-			),
-	)
+	data := map[string]any{
+		"Review":             httpReview,
+		"BoundCauses":        httpReview.BoundCauses,
+		"ContributingCauses": convertContributingCauseToHttpObjects(contributingCauses),
+		"ReviewID":           reviewID,
+		"ContributingCause":  BoundCauseBasic{},
+	}
+	// layout := a.layout(
+	// 	partial.
+	// 		NewID("contributing-causes", "templates/reviews/_contributing-causes.html").
+	// 		SetFileSystem(templates).
+	// 		AddData("Review", httpReview).
+	// 		AddData("BoundCauses", httpReview.BoundCauses).
+	// 		AddData("ContributingCauses", convertContributingCauseToHttpObjects(contributingCauses)).
+	// 		AddData("ReviewID", reviewID).
+	// 		AddData("ContributingCause", BoundCauseBasic{}).
+	// 		With(partial.
+	// 			NewID("BindContributingCause",
+	// 				"templates/contributing-causes/binding/_new_form.html",
+	// 				"templates/contributing-causes/binding/_causes-options.html").
+	// 			SetFileSystem(templates),
+	// 		).
+	// 		With(partial.
+	// 			NewID("bound-contributing-cause-li", "templates/reviews/__contributing-cause-_bound-li.html").
+	// 			SetFileSystem(templates),
+	// 		),
+	// )
 
-	if err := layout.WriteWithRequest(r.Context(), w, r); err != nil {
+	if err := a.pp.Render(w, "reviews/show/_contributing-causes.html", map[string]any{"Data": data}); err != nil {
 		slog.Error("failed to render bind contributing cause", "reviewID", reviewID, "error", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -462,8 +493,7 @@ func (a *reviewsHandler) EditBoundContributingCause(w http.ResponseWriter, r *ht
 	}
 
 	allCauses, _ := a.loadContributingCauses(r.Context(), h)
-
-	boundLi := partial.NewID("bound-contributing-cause-li", "templates/reviews/__contributing-cause-bound-li.html")
+	boundLi := partial.NewID("bound-contributing-cause-li", "templates/reviews/__contributing-cause-_bound-li.html")
 
 	layout := a.layout(partial.
 		NewID("edit-contributing-cause-form", "templates/contributing-causes/binding/_new_form.html").
@@ -534,7 +564,7 @@ func (a *reviewsHandler) UpdateBoundContributingCause(w http.ResponseWriter, r *
 	}
 
 	layout := a.layout(partial.
-		NewID("bound-contributing-cause-li", "templates/reviews/__contributing-cause-bound-li.html").
+		NewID("bound-contributing-cause-li", "templates/reviews/__contributing-cause-_bound-li.html").
 		SetData(map[string]any{
 			"ReviewID":          reviewID,
 			"ContributingCause": toBoundCauseBasic(boundCause),
