@@ -1,0 +1,6 @@
+<li{{ if .ContributingCause.IsProximalCause }} class="proximalCause"{{ end }} hx-target="this" hx-swap="innerHTML">
+    <form method="get" action="/reviews/{{ .ReviewID }}/contributing-causes/{{ .ContributingCause.ID }}/edit">
+        <button class="edit" type="submit" title="Edit">✍️</button>
+    </form>
+    <span class="contributingCause">{{ .ContributingCause.Name }}</span> — <span class="why">{{ .ContributingCause.Why }}</span>
+</li>
