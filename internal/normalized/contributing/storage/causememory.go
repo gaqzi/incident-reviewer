@@ -33,7 +33,7 @@ func (s *CauseMemoryStore) Get(_ context.Context, id uuid.UUID) (contributing.Ca
 
 func (s *CauseMemoryStore) Save(_ context.Context, cause contributing.Cause) (contributing.Cause, error) {
 	if cause.ID == uuid.Nil {
-		return contributing.Cause{}, NoIDError
+		return contributing.Cause{}, ErrNoID
 	}
 
 	s.data[cause.ID] = cause
