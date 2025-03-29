@@ -83,7 +83,7 @@ func Start(ctx context.Context, cfg Config) (*Server, error) {
 	r.Route("/contributing-causes", web.ContributingCausesHandler(causeService))
 
 	reviewStore := reviewstorage.NewMemoryStore()
-	reviewService := reviewing.NewService(reviewStore, causeService)
+	reviewService := reviewing.NewService(reviewStore, causeService, nil)
 	r.Route("/reviews", web.ReviewsHandler(reviewService, causeService))
 
 	go (func() {
