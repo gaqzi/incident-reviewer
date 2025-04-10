@@ -1,6 +1,7 @@
 module github.com/gaqzi/incident-reviewer
 
 go 1.24.1
+
 require (
 	github.com/donseba/go-htmx v1.12.0
 	github.com/donseba/go-partial v0.8.0
@@ -11,7 +12,7 @@ require (
 	github.com/go-sqlx/sqlx v1.3.8
 	github.com/google/uuid v1.6.0
 	github.com/lib/pq v1.10.9
-	github.com/playwright-community/playwright-go v0.5001.0
+	github.com/playwright-community/playwright-go v0.5101.0
 	github.com/pressly/goose/v3 v3.24.2
 	github.com/quasilyte/go-ruleguard/dsl v0.3.22
 	github.com/sevlyar/go-daemon v0.1.6
