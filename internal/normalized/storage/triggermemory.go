@@ -31,7 +31,7 @@ func (s *TriggerMemoryStore) Get(_ context.Context, id uuid.UUID) (normalized.Tr
 
 func (s *TriggerMemoryStore) Save(_ context.Context, trigger normalized.Trigger) (normalized.Trigger, error) {
 	if trigger.ID == uuid.Nil {
-		return normalized.Trigger{}, storage.NoIDError
+		return normalized.Trigger{}, storage.ErrNoID
 	}
 
 	s.data[trigger.ID] = trigger

@@ -27,7 +27,7 @@ func TriggerStorageTest(t *testing.T, ctx context.Context, storeFactory func() n
 
 			_, actual := store.Save(ctx, normalized.Trigger{})
 
-			require.ErrorIs(t, actual, storage2.NoIDError, "expected the sentinel error for not having an ID set")
+			require.ErrorIs(t, actual, storage2.ErrNoID, "expected the sentinel error for not having an ID set")
 		})
 
 		t.Run("an object with the ID set is saved without errors", func(t *testing.T) {
