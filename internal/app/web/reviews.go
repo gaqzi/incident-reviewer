@@ -666,7 +666,27 @@ func (a *reviewsHandler) BindTrigger(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, _ = h.WriteString("successfully saved trigger")
+	review, err := a.loadReview(r.Context(), h, reviewID)
+	if err != nil {
+		return
+	}
+	httpReview := convertToHttpObject(review)
+
+	layout := a.layout(
+		partial.
+			NewID("triggers", "templates/reviews/_triggers.html").
+			SetFileSystem(templates).
+			AddData("Review", httpReview).
+			AddData("ReviewID", reviewID).
+			AddData("BoundTrigger", BoundTriggerBasic{}).
+			AddData("BoundTriggers", httpReview.BoundTriggers),
+	)
+
+	if err := layout.WriteWithRequest(r.Context(), w, r); err != nil {
+		slog.Error("failed to render bind contributing cause", "reviewID", reviewID, "error", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 }
 

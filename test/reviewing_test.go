@@ -223,7 +223,7 @@ func TestReviewing(t *testing.T) {
 		require.NoError(t, err, "failed to get the text of the first trigger")
 		require.Equal(
 			t,
-			"Traffic -- Marketing campaign started",
+			"Traffic increase -- Marketing campaign started",
 			firstTrigger,
 		)
 
