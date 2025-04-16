@@ -1,9 +1,11 @@
 package a
 
 import (
-	"github.com/gaqzi/incident-reviewer/internal/normalized"
-	"github.com/google/uuid"
 	"time"
+
+	"github.com/google/uuid"
+
+	"github.com/gaqzi/incident-reviewer/internal/normalized"
 )
 
 type BuilderNormalizedTrigger struct {
@@ -32,6 +34,23 @@ func (b BuilderNormalizedTrigger) IsSaved() BuilderNormalizedTrigger {
 
 func (b BuilderNormalizedTrigger) Build() normalized.Trigger {
 	return b.t
+}
+
+func (b BuilderNormalizedTrigger) IsNotSaved() BuilderNormalizedTrigger {
+	b.t.CreatedAt = time.Time{}
+	b.t.UpdatedAt = time.Time{}
+
+	return b
+}
+
+func (b BuilderNormalizedTrigger) WithID(uuid uuid.UUID) BuilderNormalizedTrigger {
+	b.t.ID = uuid
+	return b
+}
+
+func (b BuilderNormalizedTrigger) WithName(n string) BuilderNormalizedTrigger {
+	b.t.Name = n
+	return b
 }
 
 func NormalizedTrigger() BuilderNormalizedTrigger {

@@ -17,6 +17,7 @@ import (
 	"github.com/gaqzi/incident-reviewer/internal/normalized"
 	"github.com/gaqzi/incident-reviewer/internal/normalized/contributing"
 	contribstorage "github.com/gaqzi/incident-reviewer/internal/normalized/contributing/storage"
+	"github.com/gaqzi/incident-reviewer/internal/normalized/storage"
 	"github.com/gaqzi/incident-reviewer/internal/reviewing"
 	reviewstorage "github.com/gaqzi/incident-reviewer/internal/reviewing/storage"
 )
@@ -86,17 +87,17 @@ func Start(ctx context.Context, cfg Config) (*Server, error) {
 
 	reviewStore := reviewstorage.NewMemoryStore()
 
-	triggerStore := normalized.NewTriggerMemoryStore()
+	triggerService := normalized.NewTriggerService(storage.NewTriggerMemoryStore())
 	trigger := normalized.Trigger{}
 	trigger.ID = uuid.MustParse("6A195282-04CA-4405-A6F1-678C525A001B")
 	trigger.Name = "Traffic increase"
 	trigger.Description = "More users than normal"
-	_, err = triggerStore.Save(ctx, trigger)
+	_, err = triggerService.Save(ctx, trigger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to add default trigger: %w", err)
 	}
 
-	reviewService := reviewing.NewService(reviewStore, causeService, triggerStore)
+	reviewService := reviewing.NewService(reviewStore, causeService, triggerService)
 	r.Route("/reviews", web.ReviewsHandler(reviewService, causeService))
 
 	go (func() {
