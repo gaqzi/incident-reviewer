@@ -5,5 +5,17 @@ if [ "$CI" != 'true' ] ; then
   golangci-lint run || exit 1
 fi
 
+# If we've done an override for where testcontainers are then assume we're using colima and set the host override
+if [ -n "${TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE}" ] ; then
+  export TESTCONTAINERS_HOST_OVERRIDE=$(colima ls | awk '{print $8}' | tail -n1)
+
+  if [ -z "$TESTCONTAINERS_HOST_OVERRIDE" ] ; then
+    # Warn if we seem to be running under Colima but can't get the IP address, most likely the tests will fail.
+    echo "" >&2
+    echo "    TESTCONTAINERS_HOST_OVERRIDE not set, is colima running? try running 'colima start' and try again" >&2
+    echo "" >&2
+  fi
+fi
+
 ## Run the go tests
 exec go test -race ./...

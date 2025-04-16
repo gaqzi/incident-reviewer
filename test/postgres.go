@@ -19,7 +19,7 @@ const (
 	PostgresContainer = "docker.io/postgres:16-alpine"
 )
 
-func StartPostgres(ctx context.Context) (err error, conn string, done func()) {
+func StartPostgres(ctx context.Context) (conn string, done func(), err error) {
 	postgresContainer, err := postgres.Run(ctx,
 		PostgresContainer,
 		postgres.WithDatabase("incident_reviewer"),
@@ -30,26 +30,26 @@ func StartPostgres(ctx context.Context) (err error, conn string, done func()) {
 		),
 	)
 	if err != nil {
-		return fmt.Errorf("failed to start postgres: %w", err), "", nil
+		return "", nil, fmt.Errorf("failed to start postgres: %w", err)
 	}
 
 	connectionString, err := postgresContainer.ConnectionString(ctx, "sslmode=disable")
 	if err != nil {
-		return fmt.Errorf("failed to get postgres connection string: %w", err), "", nil
+		return "", nil, fmt.Errorf("failed to get postgres connection string: %w", err)
 	}
 
 	if err := migrate(connectionString); err != nil {
-		return err, "", func() {}
+		return "", func() {}, err
 	}
 
-	return nil, connectionString, func() {
+	return connectionString, func() {
 		// the below line is for the next version of testcontainers, but it was already part of the docs,
 		// so should move there when I upgrade.
 		// if err := testcontainers.TerminateContainer(postgresContainer); err != nil {
 		if err := postgresContainer.Terminate(context.Background()); err != nil {
 			log.Printf("failed to terminate container: %s", err)
 		}
-	}
+	}, nil
 }
 
 type gooseErrorLogger struct{}

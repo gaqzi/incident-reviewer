@@ -19,7 +19,7 @@ func TestStartPostgres(t *testing.T) {
 		psqlCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 		defer cancel()
 
-		err, conn, done := test.StartPostgres(psqlCtx)
+		conn, done, err := test.StartPostgres(psqlCtx)
 		require.NoError(t, err, "expected to have started a postgres container successfully")
 
 		db, err := sqlx.Connect("postgres", conn)
