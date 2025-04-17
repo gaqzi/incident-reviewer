@@ -1,0 +1,9 @@
+<contributing-causes hx-target="this" hx-swap="outerHTML">
+    {{ template "partials/contributing-causes/_form.html" . }}
+
+    <ul class="listing">
+        {{ range .Data.BoundCauses }}
+            {{ template "partials/contributing-causes/_bound-li.html" map nil "ReviewID" $.Data.ReviewID "ContributingCause" . }}
+        {{ end }}
+    </ul>
+</contributing-causes>

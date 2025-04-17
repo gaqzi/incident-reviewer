@@ -2,9 +2,9 @@
 <form method="post" action="/reviews/{{ .Data.ReviewID }}/contributing-causes/{{ .Data.ContributingCause.ID }}/edit" class="new">
 {{ else }}
 <form method="post" action="/reviews/{{ .Data.ReviewID }}/contributing-causes" class="new">
-{{ end }}
+    {{ end }}
     <ul>
-        {{ template "bind-contributing-cause-options" .Data }}
+       {{ template "partials/contributing-causes/_causes-options.html" .Data }}
 
         <li>
             <label>
