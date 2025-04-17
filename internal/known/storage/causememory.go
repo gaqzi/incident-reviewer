@@ -7,33 +7,33 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/gaqzi/incident-reviewer/internal/normalized/contributing"
+	"github.com/gaqzi/incident-reviewer/internal/known"
 )
 
 // TODO: refactor into a generic implementation because the logic is the same across this one and reviewing/storage.MemoryStore.
 
 type CauseMemoryStore struct {
-	data map[uuid.UUID]contributing.Cause
+	data map[uuid.UUID]known.Cause
 }
 
 func NewCauseMemoryStore() *CauseMemoryStore {
 	return &CauseMemoryStore{
-		data: make(map[uuid.UUID]contributing.Cause),
+		data: make(map[uuid.UUID]known.Cause),
 	}
 }
 
-func (s *CauseMemoryStore) Get(_ context.Context, id uuid.UUID) (contributing.Cause, error) {
+func (s *CauseMemoryStore) Get(_ context.Context, id uuid.UUID) (known.Cause, error) {
 	cause, ok := s.data[id]
 	if !ok {
-		return contributing.Cause{}, &NoCauseError{ID: id}
+		return known.Cause{}, &NoCauseError{ID: id}
 	}
 
 	return cause, nil
 }
 
-func (s *CauseMemoryStore) Save(_ context.Context, cause contributing.Cause) (contributing.Cause, error) {
+func (s *CauseMemoryStore) Save(_ context.Context, cause known.Cause) (known.Cause, error) {
 	if cause.ID == uuid.Nil {
-		return contributing.Cause{}, ErrNoID
+		return known.Cause{}, ErrNoID
 	}
 
 	s.data[cause.ID] = cause
@@ -41,8 +41,8 @@ func (s *CauseMemoryStore) Save(_ context.Context, cause contributing.Cause) (co
 	return cause, nil
 }
 
-func (s *CauseMemoryStore) All(_ context.Context) ([]contributing.Cause, error) {
-	ret := make([]contributing.Cause, 0, len(s.data))
+func (s *CauseMemoryStore) All(_ context.Context) ([]known.Cause, error) {
+	ret := make([]known.Cause, 0, len(s.data))
 
 	// Sort all the keys for the store, which returns keys in a non-deterministic order,
 	// and the sort order is 1, 2, 3… by the ID, which is monotonically incrementing

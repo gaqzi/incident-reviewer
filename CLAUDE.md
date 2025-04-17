@@ -20,8 +20,8 @@
 - **Database**: PostgreSQL with goose migrations
 
 ## Domain Knowledge
-- The app deals with incident reviews and contributing causes
-- Models in `internal/normalized` and `internal/reviewing`
+- The app deals with incident reviews and known causes
+- Models in `internal/known` and `internal/reviewing`
 - Web handlers in `internal/app/web`
 
 ## Pattern definitions as prompts

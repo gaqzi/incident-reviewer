@@ -1,0 +1,12 @@
+<known-causes hx-target="this" hx-swap="outerHTML">
+    {{ child "BindKnownCause"
+        "ReviewID" .Data.ReviewID
+        "KnownCause" .Data.KnownCause
+        "KnownCauses" .Data.KnownCauses }}
+
+    <ul class="listing">
+        {{ range .Data.BoundCauses }}
+            {{ child "bound-known-cause-li" "ReviewID" $.Data.ReviewID "KnownCause" . }}
+        {{ end }}
+    </ul>
+</known-causes>

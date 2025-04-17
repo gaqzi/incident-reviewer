@@ -1,4 +1,4 @@
-package normalized
+package known
 
 import (
 	"context"
@@ -50,7 +50,7 @@ func (s *TriggerService) Save(ctx context.Context, t Trigger) (Trigger, error) {
 
 	t, err := s.store.Save(ctx, t)
 	if err != nil {
-		return t, fmt.Errorf("failed to store normalized trigger: %w", err)
+		return t, fmt.Errorf("failed to store known trigger: %w", err)
 	}
 
 	return t, nil

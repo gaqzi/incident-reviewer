@@ -9,8 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 
-	"github.com/gaqzi/incident-reviewer/internal/normalized"
-	"github.com/gaqzi/incident-reviewer/internal/normalized/contributing"
+	"github.com/gaqzi/incident-reviewer/internal/known"
 )
 
 func TestActionMapper(t *testing.T) {
@@ -20,8 +19,8 @@ func TestActionMapper(t *testing.T) {
 		require.ElementsMatch(
 			t,
 			[]string{
-				"BindContributingCause",
-				"UpdateBoundContributingCause",
+				"BindKnownCause",
+				"UpdateBoundKnownCause",
 				"Save",
 				"BindTrigger",
 			},
@@ -30,15 +29,15 @@ func TestActionMapper(t *testing.T) {
 		)
 	})
 
-	t.Run("BindContributingCause sets the contributing.Cause on the BoundCause before adding it to the Review and sets a valid ID if not provided", func(t *testing.T) {
+	t.Run("BindKnownCause sets the known.Cause on the BoundCause before adding it to the Review and sets a valid ID if not provided", func(t *testing.T) {
 		mapper := reviewServiceActions()
 
-		doer, err := mapper.Get("BindContributingCause")
+		doer, err := mapper.Get("BindKnownCause")
 		require.NoError(t, err)
-		do, ok := doer.(func(Review, contributing.Cause, BoundCause) (Review, error))
+		do, ok := doer.(func(Review, known.Cause, BoundCause) (Review, error))
 		require.True(t, ok)
 
-		cause := contributing.Cause{Name: "Something"}
+		cause := known.Cause{Name: "Something"}
 		review, err := do(Review{}, cause, BoundCause{})
 		require.NoError(t, err)
 
@@ -46,19 +45,19 @@ func TestActionMapper(t *testing.T) {
 			t,
 			Review{BoundCauses: []BoundCause{{ID: review.BoundCauses[0].ID, Cause: cause}}},
 			review,
-			"expected the contributing cause to have been set on the BoundCause and then added to the Review",
+			"expected the known cause to have been set on the BoundCause and then added to the Review",
 		)
 	})
 
-	t.Run("BindTrigger sets the normalized.Trigger on the BoundTrigger before adding it to the Review and sets a valid ID if not provided", func(t *testing.T) {
+	t.Run("BindTrigger sets the known.Trigger on the BoundTrigger before adding it to the Review and sets a valid ID if not provided", func(t *testing.T) {
 		mapper := reviewServiceActions()
 
 		doer, err := mapper.Get("BindTrigger")
 		require.NoError(t, err)
-		do, ok := doer.(func(Review, normalized.Trigger, UnboundTrigger) (Review, error))
+		do, ok := doer.(func(Review, known.Trigger, UnboundTrigger) (Review, error))
 		require.True(t, ok)
 
-		trigger := normalized.Trigger{Name: "Something"}
+		trigger := known.Trigger{Name: "Something"}
 		review, err := do(Review{}, trigger, UnboundTrigger{Why: "a good reason"})
 		require.NoError(t, err)
 
@@ -66,7 +65,7 @@ func TestActionMapper(t *testing.T) {
 			t,
 			Review{BoundTriggers: []BoundTrigger{{ID: review.BoundTriggers[0].ID, Trigger: trigger, UnboundTrigger: UnboundTrigger{Why: "a good reason"}}}},
 			review,
-			"expected the contributing trigger to have been set on the BoundTrigger and then added to the Review",
+			"expected the known trigger to have been set on the BoundTrigger and then added to the Review",
 		)
 	})
 
