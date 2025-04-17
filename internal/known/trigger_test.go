@@ -1,4 +1,4 @@
-package normalized_test
+package known_test
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/gaqzi/incident-reviewer/internal/normalized"
+	"github.com/gaqzi/incident-reviewer/internal/known"
 	"github.com/gaqzi/incident-reviewer/test/a"
 )
 
@@ -18,33 +18,33 @@ type triggerStorageMock struct {
 	mock.Mock
 }
 
-func (m *triggerStorageMock) Get(ctx context.Context, id uuid.UUID) (normalized.Trigger, error) {
+func (m *triggerStorageMock) Get(ctx context.Context, id uuid.UUID) (known.Trigger, error) {
 	args := m.Called(ctx, id)
-	return args.Get(0).(normalized.Trigger), args.Error(1)
+	return args.Get(0).(known.Trigger), args.Error(1)
 }
 
-func (m *triggerStorageMock) Save(ctx context.Context, trigger normalized.Trigger) (normalized.Trigger, error) {
+func (m *triggerStorageMock) Save(ctx context.Context, trigger known.Trigger) (known.Trigger, error) {
 	args := m.Called(ctx, trigger)
-	return args.Get(0).(normalized.Trigger), args.Error(1)
+	return args.Get(0).(known.Trigger), args.Error(1)
 }
 
-func (m *triggerStorageMock) All(ctx context.Context) ([]normalized.Trigger, error) {
+func (m *triggerStorageMock) All(ctx context.Context) ([]known.Trigger, error) {
 	args := m.Called(ctx)
-	return args.Get(0).([]normalized.Trigger), args.Error(1)
+	return args.Get(0).([]known.Trigger), args.Error(1)
 }
 
-func TestNormalizedTriggerService_Save(t *testing.T) {
+func TestKnownTriggerService_Save(t *testing.T) {
 	t.Run("sets the Created and Updated at when they're not set", func(t *testing.T) {
 		storage := new(triggerStorageMock)
 		storage.Test(t)
 		storage.
-			On("Save", mock.Anything, mock.MatchedBy(func(c normalized.Trigger) bool {
+			On("Save", mock.Anything, mock.MatchedBy(func(c known.Trigger) bool {
 				return !c.CreatedAt.IsZero() && !c.UpdatedAt.IsZero() && c.CreatedAt.Equal(c.UpdatedAt)
 			})).
-			Return(normalized.Trigger{}, nil)
-		service := normalized.NewTriggerService(storage)
+			Return(known.Trigger{}, nil)
+		service := known.NewTriggerService(storage)
 
-		_, err := service.Save(context.Background(), a.NormalizedTrigger().IsNotSaved().Build())
+		_, err := service.Save(context.Background(), a.Trigger().IsNotSaved().Build())
 
 		require.NoError(t, err)
 	})
@@ -53,21 +53,21 @@ func TestNormalizedTriggerService_Save(t *testing.T) {
 		storage := new(triggerStorageMock)
 		storage.Test(t)
 		storage.
-			On("Save", mock.Anything, mock.MatchedBy(func(c normalized.Trigger) bool {
+			On("Save", mock.Anything, mock.MatchedBy(func(c known.Trigger) bool {
 				return !c.UpdatedAt.IsZero() && c.UpdatedAt.After(c.CreatedAt)
 			})).
-			Return(normalized.Trigger{}, nil)
-		service := normalized.NewTriggerService(storage)
+			Return(known.Trigger{}, nil)
+		service := known.NewTriggerService(storage)
 
-		_, err := service.Save(context.Background(), a.NormalizedTrigger().IsSaved().Build())
+		_, err := service.Save(context.Background(), a.Trigger().IsSaved().Build())
 
 		require.NoError(t, err)
 	})
 
 	t.Run("validate the Trigger object before saving", func(t *testing.T) {
-		service := normalized.NewTriggerService(nil)
+		service := known.NewTriggerService(nil)
 
-		_, actual := service.Save(context.Background(), normalized.Trigger{})
+		_, actual := service.Save(context.Background(), known.Trigger{})
 
 		require.Error(t, actual)
 		require.ErrorContains(t, actual, "failed to validate trigger:")
@@ -80,35 +80,35 @@ func TestNormalizedTriggerService_Save(t *testing.T) {
 		storage := new(triggerStorageMock)
 		storage.Test(t)
 		storage.On("Save", mock.Anything, mock.Anything).
-			Return(normalized.Trigger{}, errors.New("uh-oh"))
-		service := normalized.NewTriggerService(storage)
+			Return(known.Trigger{}, errors.New("uh-oh"))
+		service := known.NewTriggerService(storage)
 
-		_, err := service.Save(context.Background(), a.NormalizedTrigger().Build())
+		_, err := service.Save(context.Background(), a.Trigger().Build())
 
 		require.Error(t, err, "expected to have failed when the underlying storage always fails")
-		require.ErrorContains(t, err, "failed to store normalized trigger:")
+		require.ErrorContains(t, err, "failed to store known trigger:")
 	})
 
 	t.Run("on successful save returns the updated trigger", func(t *testing.T) {
 		storage := new(triggerStorageMock)
 		storage.Test(t)
 		storage.On("Save", mock.Anything, mock.Anything).
-			Return(a.NormalizedTrigger().Build(), nil)
-		service := normalized.NewTriggerService(storage)
+			Return(a.Trigger().Build(), nil)
+		service := known.NewTriggerService(storage)
 
-		actual, err := service.Save(context.Background(), a.NormalizedTrigger().IsNotSaved().Build())
+		actual, err := service.Save(context.Background(), a.Trigger().IsNotSaved().Build())
 
 		require.NoError(t, err)
-		require.Equal(t, a.NormalizedTrigger().Build(), actual)
+		require.Equal(t, a.Trigger().Build(), actual)
 	})
 }
 
-func TestNormalizedTriggerService_Get(t *testing.T) {
+func TestKnownTriggerService_Get(t *testing.T) {
 	t.Run("wraps any storage error and returns it", func(t *testing.T) {
 		storage := new(triggerStorageMock)
 		storage.Test(t)
-		storage.On("Get", mock.Anything, mock.Anything).Return(normalized.Trigger{}, errors.New("uh-oh"))
-		service := normalized.NewTriggerService(storage)
+		storage.On("Get", mock.Anything, mock.Anything).Return(known.Trigger{}, errors.New("uh-oh"))
+		service := known.NewTriggerService(storage)
 
 		_, actual := service.Get(context.Background(), uuid.Nil)
 
@@ -118,24 +118,24 @@ func TestNormalizedTriggerService_Get(t *testing.T) {
 	t.Run("with no errors from storage return the object as-is", func(t *testing.T) {
 		storage := new(triggerStorageMock)
 		storage.Test(t)
-		expected := a.NormalizedTrigger().Build()
+		expected := a.Trigger().Build()
 		storage.On("Get", mock.Anything, expected.ID).Return(expected, nil)
-		service := normalized.NewTriggerService(storage)
+		service := known.NewTriggerService(storage)
 
 		actual, err := service.Get(context.Background(), expected.ID)
 
 		require.NoError(t, err)
-		require.Equal(t, expected, actual, "expected an unchanged normalized trigger back")
+		require.Equal(t, expected, actual, "expected an unchanged known trigger back")
 	})
 }
 
-func TestNormalizedTriggerService_All(t *testing.T) {
+func TestKnownTriggerService_All(t *testing.T) {
 	t.Run("returns a wrapped error if one is returned from the storage", func(t *testing.T) {
 		storage := new(triggerStorageMock)
 		storage.Test(t)
-		storage.On("All", mock.Anything).Return(([]normalized.Trigger)(nil), errors.New("uh-oh"))
+		storage.On("All", mock.Anything).Return(([]known.Trigger)(nil), errors.New("uh-oh"))
 		ctx := context.Background()
-		service := normalized.NewTriggerService(storage)
+		service := known.NewTriggerService(storage)
 
 		_, actual := service.All(ctx)
 
@@ -146,16 +146,16 @@ func TestNormalizedTriggerService_All(t *testing.T) {
 	t.Run("returns the returned object when no errors", func(t *testing.T) {
 		storage := new(triggerStorageMock)
 		storage.Test(t)
-		storage.On("All", mock.Anything).Return([]normalized.Trigger{a.NormalizedTrigger().Build()}, nil)
+		storage.On("All", mock.Anything).Return([]known.Trigger{a.Trigger().Build()}, nil)
 		ctx := context.Background()
-		service := normalized.NewTriggerService(storage)
+		service := known.NewTriggerService(storage)
 
 		actual, err := service.All(ctx)
 		require.NoError(t, err)
 
 		require.Equal(
 			t,
-			[]normalized.Trigger{a.NormalizedTrigger().Build()},
+			[]known.Trigger{a.Trigger().Build()},
 			actual,
 		)
 	})

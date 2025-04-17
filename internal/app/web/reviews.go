@@ -15,7 +15,7 @@ import (
 	"github.com/go-playground/form/v4"
 	"github.com/google/uuid"
 
-	"github.com/gaqzi/incident-reviewer/internal/normalized/contributing"
+	"github.com/gaqzi/incident-reviewer/internal/known"
 	"github.com/gaqzi/incident-reviewer/internal/reviewing"
 	"github.com/gaqzi/incident-reviewer/internal/reviewing/storage"
 )
@@ -30,15 +30,15 @@ type reviewingService interface {
 	// All returns all the stored reviews with the most recent first.
 	All(ctx context.Context) ([]reviewing.Review, error)
 
-	// BindContributingCause validates that the cause can be added to the review.
-	BindContributingCause(ctx context.Context, reviewID uuid.UUID, causeID uuid.UUID, boundCause reviewing.BoundCause) error
-	GetBoundContributingCause(ctx context.Context, reviewID uuid.UUID, boundCauseID uuid.UUID) (reviewing.BoundCause, error)
-	UpdateBoundContributingCause(ctx context.Context, reviewID uuid.UUID, boundCause reviewing.BoundCause) (reviewing.BoundCause, error)
+	// BindKnownCause validates that the cause can be added to the review.
+	BindKnownCause(ctx context.Context, reviewID uuid.UUID, causeID uuid.UUID, boundCause reviewing.BoundCause) error
+	GetBoundKnownCause(ctx context.Context, reviewID uuid.UUID, boundCauseID uuid.UUID) (reviewing.BoundCause, error)
+	UpdateBoundKnownCause(ctx context.Context, reviewID uuid.UUID, boundCause reviewing.BoundCause) (reviewing.BoundCause, error)
 	BindTrigger(ctx context.Context, reviewID uuid.UUID, triggerID uuid.UUID, trigger reviewing.UnboundTrigger) error
 }
 
 type causeAller interface {
-	All(ctx context.Context) ([]contributing.Cause, error)
+	All(ctx context.Context) ([]known.Cause, error)
 }
 
 type reviewsHandler struct {
@@ -83,9 +83,9 @@ func ReviewsHandler(service reviewingService, causeStore causeAller) func(chi.Ro
 			r.Get("/edit", app.Edit)
 			r.Post("/edit", app.Update)
 
-			r.Post("/contributing-causes", app.BindContributingCause)
-			r.Get("/contributing-causes/{boundCauseID}/edit", app.EditBoundContributingCause)
-			r.Post("/contributing-causes/{boundCauseID}/edit", app.UpdateBoundContributingCause)
+			r.Post("/known-causes", app.BindKnownCause)
+			r.Get("/known-causes/{boundCauseID}/edit", app.EditBoundKnownCause)
+			r.Post("/known-causes/{boundCauseID}/edit", app.UpdateBoundKnownCause)
 
 			r.Post("/triggers", app.BindTrigger)
 		})
@@ -129,11 +129,11 @@ type ReviewBasic struct {
 }
 
 type BoundCauseForm struct {
-	ID                  uuid.UUID `form:"id"`
-	ReviewID            uuid.UUID `form:"reviewID"`
-	ContributingCauseID uuid.UUID `form:"contributingCauseID"`
-	Why                 string    `form:"why"`
-	IsProximalCause     bool      `form:"isProximalCause"`
+	ID              uuid.UUID `form:"id"`
+	ReviewID        uuid.UUID `form:"reviewID"`
+	KnownCauseID    uuid.UUID `form:"knownCauseID"`
+	Why             string    `form:"why"`
+	IsProximalCause bool      `form:"isProximalCause"`
 
 	UpdatedAt time.Time
 	CreatedAt time.Time
@@ -163,7 +163,7 @@ type BoundTriggerBasic struct {
 	Why  string
 }
 
-type ContributingCauseBasic struct {
+type KnownCauseBasic struct {
 	ID          uuid.UUID
 	Name        string
 	Description string
@@ -255,7 +255,7 @@ func (a *reviewsHandler) Show(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	contributingCauses, err := a.loadContributingCauses(r.Context(), h)
+	knownCauses, err := a.loadKnownCauses(r.Context(), h)
 	if err != nil {
 		return
 	}
@@ -266,20 +266,20 @@ func (a *reviewsHandler) Show(w http.ResponseWriter, r *http.Request) {
 			NewID("content", "templates/reviews/show.html").
 			AddData("Review", httpReview).
 			AddData("BoundCauses", httpReview.BoundCauses).
-			AddData("ContributingCauses", convertContributingCauseToHttpObjects(contributingCauses)).
+			AddData("KnownCauses", convertKnownCauseToHttpObjects(knownCauses)).
 			AddData("ReviewID", reviewID).
-			AddData("ContributingCause", BoundCauseBasic{}).
+			AddData("KnownCause", BoundCauseBasic{}).
 			With(partial.
-				NewID("contributing-causes", "templates/reviews/_contributing-causes.html").
+				NewID("known-causes", "templates/reviews/_known-causes.html").
 				SetFileSystem(templates).
 				With(partial.
-					NewID("BindContributingCause",
-						"templates/contributing-causes/binding/_form.html",
-						"templates/contributing-causes/binding/__causes-options.html").
+					NewID("BindKnownCause",
+						"templates/known-causes/binding/_form.html",
+						"templates/known-causes/binding/__causes-options.html").
 					SetFileSystem(templates),
 				).
 				With(partial.
-					NewID("bound-contributing-cause-li", "templates/reviews/__contributing-cause-bound-li.html").
+					NewID("bound-known-cause-li", "templates/reviews/__known-cause-bound-li.html").
 					SetFileSystem(templates),
 				),
 			).
@@ -393,7 +393,7 @@ func (a *reviewsHandler) Update(w http.ResponseWriter, r *http.Request) {
 	h.WriteHeader(http.StatusSeeOther)
 }
 
-func (a *reviewsHandler) BindContributingCause(w http.ResponseWriter, r *http.Request) {
+func (a *reviewsHandler) BindKnownCause(w http.ResponseWriter, r *http.Request) {
 	h := a.htmx.NewHandler(w, r)
 
 	if !h.IsHxRequest() {
@@ -403,7 +403,7 @@ func (a *reviewsHandler) BindContributingCause(w http.ResponseWriter, r *http.Re
 
 	reviewID, err := uuid.Parse(r.PathValue("id"))
 	if err != nil {
-		slog.Error("failed to parse id for create contributing cause", "id", r.PathValue("id"), "error", err)
+		slog.Error("failed to parse id for create known cause", "id", r.PathValue("id"), "error", err)
 		h.WriteHeader(http.StatusBadRequest)
 		h.JustWriteString("invalid id")
 		return
@@ -417,19 +417,19 @@ func (a *reviewsHandler) BindContributingCause(w http.ResponseWriter, r *http.Re
 
 	var boundCauseForm BoundCauseForm
 	if err := a.decoder.Decode(&boundCauseForm, r.PostForm); err != nil {
-		slog.Error("failed to decode basic contributing cause form", "error", err)
+		slog.Error("failed to decode basic known cause form", "error", err)
 		h.WriteHeader(http.StatusBadRequest)
 		h.JustWriteString(err.Error())
 		return
 	}
 
-	if err := a.service.BindContributingCause(
+	if err := a.service.BindKnownCause(
 		r.Context(),
 		reviewID,
-		boundCauseForm.ContributingCauseID,
+		boundCauseForm.KnownCauseID,
 		reviewing.BoundCause{Why: boundCauseForm.Why, IsProximalCause: boundCauseForm.IsProximalCause},
 	); err != nil {
-		slog.Error("failed to bind contributing cause", "reviewID", reviewID, "error", err)
+		slog.Error("failed to bind known cause", "reviewID", reviewID, "error", err)
 		h.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -439,7 +439,7 @@ func (a *reviewsHandler) BindContributingCause(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	contributingCauses, err := a.loadContributingCauses(r.Context(), h)
+	knownCauses, err := a.loadKnownCauses(r.Context(), h)
 	if err != nil {
 		return
 	}
@@ -447,33 +447,33 @@ func (a *reviewsHandler) BindContributingCause(w http.ResponseWriter, r *http.Re
 	httpReview := convertToHttpObject(review)
 	layout := a.layout(
 		partial.
-			NewID("contributing-causes", "templates/reviews/_contributing-causes.html").
+			NewID("known-causes", "templates/reviews/_known-causes.html").
 			SetFileSystem(templates).
 			AddData("Review", httpReview).
 			AddData("BoundCauses", httpReview.BoundCauses).
-			AddData("ContributingCauses", convertContributingCauseToHttpObjects(contributingCauses)).
+			AddData("KnownCauses", convertKnownCauseToHttpObjects(knownCauses)).
 			AddData("ReviewID", reviewID).
-			AddData("ContributingCause", BoundCauseBasic{}).
+			AddData("KnownCause", BoundCauseBasic{}).
 			With(partial.
-				NewID("BindContributingCause",
-					"templates/contributing-causes/binding/_form.html",
-					"templates/contributing-causes/binding/__causes-options.html").
+				NewID("BindKnownCause",
+					"templates/known-causes/binding/_form.html",
+					"templates/known-causes/binding/__causes-options.html").
 				SetFileSystem(templates),
 			).
 			With(partial.
-				NewID("bound-contributing-cause-li", "templates/reviews/__contributing-cause-bound-li.html").
+				NewID("bound-known-cause-li", "templates/reviews/__known-cause-bound-li.html").
 				SetFileSystem(templates),
 			),
 	)
 
 	if err := layout.WriteWithRequest(r.Context(), w, r); err != nil {
-		slog.Error("failed to render bind contributing cause", "reviewID", reviewID, "error", err)
+		slog.Error("failed to render bind known cause", "reviewID", reviewID, "error", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 }
 
-func (a *reviewsHandler) EditBoundContributingCause(w http.ResponseWriter, r *http.Request) {
+func (a *reviewsHandler) EditBoundKnownCause(w http.ResponseWriter, r *http.Request) {
 	h := a.htmx.NewHandler(w, r)
 
 	if !h.IsHxRequest() {
@@ -483,7 +483,7 @@ func (a *reviewsHandler) EditBoundContributingCause(w http.ResponseWriter, r *ht
 
 	reviewID, err := uuid.Parse(r.PathValue("id"))
 	if err != nil {
-		slog.Error("failed to parse id for create contributing cause", "id", r.PathValue("id"), "error", err)
+		slog.Error("failed to parse id for create known cause", "id", r.PathValue("id"), "error", err)
 		h.WriteHeader(http.StatusBadRequest)
 		h.JustWriteString("invalid id")
 		return
@@ -497,23 +497,23 @@ func (a *reviewsHandler) EditBoundContributingCause(w http.ResponseWriter, r *ht
 		return
 	}
 
-	boundCause, err := a.service.GetBoundContributingCause(r.Context(), reviewID, boundCauseID)
+	boundCause, err := a.service.GetBoundKnownCause(r.Context(), reviewID, boundCauseID)
 	if err != nil {
-		slog.Error("failed to get bound contributing cause", "id", reviewID, "boundCauseID", boundCauseID, "error", err)
+		slog.Error("failed to get bound known cause", "id", reviewID, "boundCauseID", boundCauseID, "error", err)
 		h.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	allCauses, _ := a.loadContributingCauses(r.Context(), h)
+	allCauses, _ := a.loadKnownCauses(r.Context(), h)
 
-	boundLi := partial.NewID("bound-contributing-cause-li", "templates/reviews/__contributing-cause-bound-li.html")
+	boundLi := partial.NewID("bound-known-cause-li", "templates/reviews/__known-cause-bound-li.html")
 
 	layout := a.layout(partial.
-		NewID("edit-contributing-cause-form", "templates/contributing-causes/binding/_form.html").
+		NewID("edit-known-cause-form", "templates/known-causes/binding/_form.html").
 		With(boundLi).
-		AddTemplate("templates/contributing-causes/binding/__causes-options.html").
-		AddData("ContributingCauses", convertContributingCauseToHttpObjects(allCauses)).
-		AddData("ContributingCause", toBoundCauseBasic(boundCause)).
+		AddTemplate("templates/known-causes/binding/__causes-options.html").
+		AddData("KnownCauses", convertKnownCauseToHttpObjects(allCauses)).
+		AddData("KnownCause", toBoundCauseBasic(boundCause)).
 		AddData("boundCauseID", boundCauseID).
 		AddData("ReviewID", reviewID).
 		AddData("SelectedCauseID", boundCause.Cause.ID.String()),
@@ -525,7 +525,7 @@ func (a *reviewsHandler) EditBoundContributingCause(w http.ResponseWriter, r *ht
 	}
 }
 
-func (a *reviewsHandler) UpdateBoundContributingCause(w http.ResponseWriter, r *http.Request) {
+func (a *reviewsHandler) UpdateBoundKnownCause(w http.ResponseWriter, r *http.Request) {
 	h := a.htmx.NewHandler(w, r)
 
 	if !h.IsHxRequest() {
@@ -536,7 +536,7 @@ func (a *reviewsHandler) UpdateBoundContributingCause(w http.ResponseWriter, r *
 
 	reviewID, err := uuid.Parse(r.PathValue("id"))
 	if err != nil {
-		slog.Error("failed to parse id for update contributing cause", "id", r.PathValue("id"), "error", err)
+		slog.Error("failed to parse id for update known cause", "id", r.PathValue("id"), "error", err)
 		h.WriteHeader(http.StatusBadRequest)
 		h.JustWriteString("invalid id")
 		return
@@ -558,34 +558,34 @@ func (a *reviewsHandler) UpdateBoundContributingCause(w http.ResponseWriter, r *
 
 	var updatedCause BoundCauseForm
 	if err := a.decoder.Decode(&updatedCause, r.PostForm); err != nil {
-		slog.Error("failed to decode request form for updating contributing cause", "error", err)
+		slog.Error("failed to decode request form for updating known cause", "error", err)
 		h.WriteHeader(http.StatusBadRequest)
 		h.JustWriteString(err.Error())
 		return
 	}
 
-	boundCause, err := a.service.UpdateBoundContributingCause(r.Context(), reviewID, reviewing.BoundCause{
+	boundCause, err := a.service.UpdateBoundKnownCause(r.Context(), reviewID, reviewing.BoundCause{
 		ID:              boundCauseID,
 		Why:             updatedCause.Why,
 		IsProximalCause: updatedCause.IsProximalCause,
-		Cause:           contributing.Cause{ID: updatedCause.ContributingCauseID},
+		Cause:           known.Cause{ID: updatedCause.KnownCauseID},
 	})
 	if err != nil {
-		slog.Error("failed to update bound contributing cause", "reviewID", reviewID, "boundCauseID", boundCauseID, "error", err)
+		slog.Error("failed to update bound known cause", "reviewID", reviewID, "boundCauseID", boundCauseID, "error", err)
 		h.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	layout := a.layout(partial.
-		NewID("bound-contributing-cause-li", "templates/reviews/__contributing-cause-bound-li.html").
+		NewID("bound-known-cause-li", "templates/reviews/__known-cause-bound-li.html").
 		SetData(map[string]any{
-			"ReviewID":          reviewID,
-			"ContributingCause": toBoundCauseBasic(boundCause),
+			"ReviewID":   reviewID,
+			"KnownCause": toBoundCauseBasic(boundCause),
 		}),
 	)
 
 	if err := layout.WriteWithRequest(r.Context(), w, r); err != nil {
-		slog.Error("failed to render after updating bound contributing cause", "reviewID", reviewID, "boundCauseID", boundCauseID, "error", err)
+		slog.Error("failed to render after updating bound known cause", "reviewID", reviewID, "boundCauseID", boundCauseID, "error", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -616,13 +616,13 @@ func (a *reviewsHandler) loadReview(ctx context.Context, h *htmx.Handler, review
 	return review, err
 }
 
-func (a *reviewsHandler) loadContributingCauses(ctx context.Context, h *htmx.Handler) ([]contributing.Cause, error) {
-	contributingCauses, err := a.causeStore.All(ctx)
-	if a.hasErrored(h, err, http.StatusInternalServerError, "failed to get all contributing causes", "error", err) {
+func (a *reviewsHandler) loadKnownCauses(ctx context.Context, h *htmx.Handler) ([]known.Cause, error) {
+	knownCauses, err := a.causeStore.All(ctx)
+	if a.hasErrored(h, err, http.StatusInternalServerError, "failed to get all known causes", "error", err) {
 		return nil, err
 	}
 
-	return contributingCauses, nil
+	return knownCauses, nil
 }
 
 func (a *reviewsHandler) BindTrigger(w http.ResponseWriter, r *http.Request) {
@@ -683,7 +683,7 @@ func (a *reviewsHandler) BindTrigger(w http.ResponseWriter, r *http.Request) {
 	)
 
 	if err := layout.WriteWithRequest(r.Context(), w, r); err != nil {
-		slog.Error("failed to render bind contributing cause", "reviewID", reviewID, "error", err)
+		slog.Error("failed to render bind known cause", "reviewID", reviewID, "error", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -750,18 +750,18 @@ func toBoundCauseBasic(cause reviewing.BoundCause) BoundCauseBasic {
 	}
 }
 
-func convertContributingCauseToHttpObjects(ccs []contributing.Cause) map[string][]ContributingCauseBasic {
-	ret := make(map[string][]ContributingCauseBasic)
+func convertKnownCauseToHttpObjects(ccs []known.Cause) map[string][]KnownCauseBasic {
+	ret := make(map[string][]KnownCauseBasic)
 
 	for _, cc := range ccs {
-		ret[cc.Category] = append(ret[cc.Category], convertContributingCauseToHttpObject(cc))
+		ret[cc.Category] = append(ret[cc.Category], convertKnownCauseToHttpObject(cc))
 	}
 
 	return ret
 }
 
-func convertContributingCauseToHttpObject(cc contributing.Cause) ContributingCauseBasic {
-	return ContributingCauseBasic{
+func convertKnownCauseToHttpObject(cc known.Cause) KnownCauseBasic {
+	return KnownCauseBasic{
 		ID:          cc.ID,
 		Name:        cc.Name,
 		Description: cc.Description,

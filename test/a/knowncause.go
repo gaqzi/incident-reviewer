@@ -5,20 +5,20 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/gaqzi/incident-reviewer/internal/normalized/contributing"
+	"github.com/gaqzi/incident-reviewer/internal/known"
 )
 
-type BuilderContributingCause struct {
-	c contributing.Cause
+type BuilderKnownCause struct {
+	c known.Cause
 }
 
-func ContributingCause() BuilderContributingCause {
-	return BuilderContributingCause{}.
+func Cause() BuilderKnownCause {
+	return BuilderKnownCause{}.
 		IsValid().
 		IsSaved()
 }
 
-func (b BuilderContributingCause) IsValid() BuilderContributingCause {
+func (b BuilderKnownCause) IsValid() BuilderKnownCause {
 	b.c.ID = uuid.MustParse("0193ddee-c2e6-72d6-ad36-9d4cee8a5e2f") // UUIDv7, just a value, no particular meaning
 	b.c.Name = "Third Party Outage"
 	b.c.Description = "When things go wrong for others"
@@ -27,7 +27,7 @@ func (b BuilderContributingCause) IsValid() BuilderContributingCause {
 	return b
 }
 
-func (b BuilderContributingCause) IsInvalid() BuilderContributingCause {
+func (b BuilderKnownCause) IsInvalid() BuilderKnownCause {
 	b.c.Name = ""
 	b.c.Description = ""
 	b.c.Category = ""
@@ -35,7 +35,7 @@ func (b BuilderContributingCause) IsInvalid() BuilderContributingCause {
 	return b
 }
 
-func (b BuilderContributingCause) IsSaved() BuilderContributingCause {
+func (b BuilderKnownCause) IsSaved() BuilderKnownCause {
 	createdAt, err := time.Parse(time.RFC3339Nano, "2024-12-19T07:25:30.1337Z")
 	if err != nil {
 		panic("failed to parse example timestamp: " + err.Error())
@@ -47,26 +47,26 @@ func (b BuilderContributingCause) IsSaved() BuilderContributingCause {
 	return b
 }
 
-func (b BuilderContributingCause) IsNotSaved() BuilderContributingCause {
+func (b BuilderKnownCause) IsNotSaved() BuilderKnownCause {
 	b.c.CreatedAt = time.Time{}
 	b.c.UpdatedAt = time.Time{}
 
 	return b
 }
 
-func (b BuilderContributingCause) WithID(id uuid.UUID) BuilderContributingCause {
+func (b BuilderKnownCause) WithID(id uuid.UUID) BuilderKnownCause {
 	b.c.ID = id
 
 	return b
 }
 
-func (b BuilderContributingCause) WithName(n string) BuilderContributingCause {
+func (b BuilderKnownCause) WithName(n string) BuilderKnownCause {
 	b.c.Name = n
 
 	return b
 }
 
-func (b BuilderContributingCause) Modify(mods ...func(cc *contributing.Cause)) BuilderContributingCause {
+func (b BuilderKnownCause) Modify(mods ...func(cc *known.Cause)) BuilderKnownCause {
 	for _, m := range mods {
 		m(&b.c)
 	}
@@ -75,6 +75,6 @@ func (b BuilderContributingCause) Modify(mods ...func(cc *contributing.Cause)) B
 
 }
 
-func (b BuilderContributingCause) Build() contributing.Cause {
+func (b BuilderKnownCause) Build() known.Cause {
 	return b.c
 }

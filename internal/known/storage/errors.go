@@ -12,11 +12,11 @@ type NoCauseError struct {
 }
 
 func (e *NoCauseError) Error() string {
-	return fmt.Sprintf("contributing cause not found by id: %d", e.ID)
+	return fmt.Sprintf("known cause not found by id: %d", e.ID)
 }
 
 // ErrNoID indicates that the passed in uuid ID is blank/uninitialized.
-var ErrNoID = errors.New("can't store contributing cause because ID is not set")
+var ErrNoID = errors.New("can't store known cause because ID is not set")
 
 type NoTriggerError struct {
 	ID uuid.UUID

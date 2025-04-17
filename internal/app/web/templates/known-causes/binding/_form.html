@@ -1,0 +1,24 @@
+{{ if .Data.KnownCause.Why }}
+<form method="post" action="/reviews/{{ .Data.ReviewID }}/known-causes/{{ .Data.KnownCause.ID }}/edit" class="new">
+{{ else }}
+<form method="post" action="/reviews/{{ .Data.ReviewID }}/known-causes" class="new">
+{{ end }}
+    <ul>
+        {{ template "bind-known-cause-options" .Data }}
+
+        <li>
+            <label>
+                Why this cause applies to this incident:
+                <textarea name="why" required>{{ .Data.KnownCause.Why }}</textarea>
+            </label>
+        </li>
+        <li>
+            <label>
+                Is this the <defn title="the cause closest to what broke, also often known as the root cause">proximal cause</defn>?
+                <input type="checkbox" name="isProximalCause" {{ if .Data.KnownCause.IsProximalCause }}checked{{ end }}>
+            </label>
+        </li>
+    </ul>
+
+    <button class="bind" type="submit">{{ if .Data.KnownCause.Why }}Save{{else}}Add!{{end}}</button>
+</form>

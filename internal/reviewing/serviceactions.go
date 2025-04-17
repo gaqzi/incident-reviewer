@@ -4,8 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/gaqzi/incident-reviewer/internal/normalized"
-	"github.com/gaqzi/incident-reviewer/internal/normalized/contributing"
+	"github.com/gaqzi/incident-reviewer/internal/known"
 	"github.com/gaqzi/incident-reviewer/internal/platform/action"
 	"github.com/gaqzi/incident-reviewer/internal/platform/validate"
 )
@@ -18,13 +17,13 @@ import (
 func reviewServiceActions() *action.Mapper {
 	m := &action.Mapper{}
 
-	m.Add("BindContributingCause", func(r Review, c contributing.Cause, rc BoundCause) (Review, error) {
+	m.Add("BindKnownCause", func(r Review, c known.Cause, rc BoundCause) (Review, error) {
 		rc.Cause = c
-		return r.BindContributingCause(rc)
+		return r.BindKnownCause(rc)
 	})
 
-	m.Add("UpdateBoundContributingCause", func(r Review, o BoundCause) (Review, error) {
-		return r.UpdateBoundContributingCause(o)
+	m.Add("UpdateBoundKnownCause", func(r Review, o BoundCause) (Review, error) {
+		return r.UpdateBoundKnownCause(o)
 	})
 
 	m.Add("Save", func(ctx context.Context, r Review) (Review, error) {
@@ -34,7 +33,7 @@ func reviewServiceActions() *action.Mapper {
 
 		return r.updateTimestamps(), nil
 	})
-	m.Add("BindTrigger", func(r Review, t normalized.Trigger, ubt UnboundTrigger) (Review, error) {
+	m.Add("BindTrigger", func(r Review, t known.Trigger, ubt UnboundTrigger) (Review, error) {
 		return r.BindTrigger(t, ubt)
 	})
 

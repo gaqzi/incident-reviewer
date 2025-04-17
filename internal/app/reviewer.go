@@ -14,10 +14,8 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/gaqzi/incident-reviewer/internal/app/web"
-	"github.com/gaqzi/incident-reviewer/internal/normalized"
-	"github.com/gaqzi/incident-reviewer/internal/normalized/contributing"
-	contribstorage "github.com/gaqzi/incident-reviewer/internal/normalized/contributing/storage"
-	"github.com/gaqzi/incident-reviewer/internal/normalized/storage"
+	"github.com/gaqzi/incident-reviewer/internal/known"
+	"github.com/gaqzi/incident-reviewer/internal/known/storage"
 	"github.com/gaqzi/incident-reviewer/internal/reviewing"
 	reviewstorage "github.com/gaqzi/incident-reviewer/internal/reviewing/storage"
 )
@@ -74,21 +72,21 @@ func Start(ctx context.Context, cfg Config) (*Server, error) {
 
 	web.PublicAssets(r)
 
-	causeService := contributing.NewCauseService(contribstorage.NewCauseMemoryStore())
-	cause := contributing.NewCause()
+	causeService := known.NewCauseService(storage.NewCauseMemoryStore())
+	cause := known.NewCause()
 	cause.Name = "Third party outage"
 	cause.Description = "In case a third party experienced issues/outage and it leads to an incident on our side.\nThings like third party changing configuration and it leading to issues on our side also qualifies"
 	cause.Category = "Design"
 	_, err = causeService.Save(ctx, cause)
 	if err != nil {
-		return nil, fmt.Errorf("failed to add default contributing causes: %w", err)
+		return nil, fmt.Errorf("failed to add default known causes: %w", err)
 	}
-	r.Route("/contributing-causes", web.ContributingCausesHandler(causeService))
+	r.Route("/known-causes", web.KnownCausesHandler(causeService))
 
 	reviewStore := reviewstorage.NewMemoryStore()
 
-	triggerService := normalized.NewTriggerService(storage.NewTriggerMemoryStore())
-	trigger := normalized.Trigger{}
+	triggerService := known.NewTriggerService(storage.NewTriggerMemoryStore())
+	trigger := known.Trigger{}
 	trigger.ID = uuid.MustParse("6A195282-04CA-4405-A6F1-678C525A001B")
 	trigger.Name = "Traffic increase"
 	trigger.Description = "More users than normal"

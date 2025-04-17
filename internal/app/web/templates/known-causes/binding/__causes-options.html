@@ -1,11 +1,11 @@
-{{ define "bind-contributing-cause-options" }}
+{{ define "bind-known-cause-options" }}
 <li id="causes" hx-target="this" hx-swap="innerHTML" hx-replace-url="false">
     <label>
-        <dfn title="A part of why we had an incident">Contributing cause</dfn>:
+        <dfn title="A part of why we had an incident">known cause</dfn>:
         {{ $selectedID := .SelectedCauseID }}
-        <select name="contributingCauseID" required>
+        <select name="knownCauseID" required>
             <option disabled selected>-- select --</option>
-            {{ range $category, $causes := .ContributingCauses }}
+            {{ range $category, $causes := .KnownCauses }}
             <optgroup label="{{ $category }}">
                 {{ range $causes }}
                 <option value="{{ .ID }}" {{ if eq .ID.String $selectedID }}selected{{ end }}>
@@ -17,8 +17,8 @@
         </select>
     </label>
 
-    <form method="get" action="/contributing-causes/new">
-        <button type="submit">Propose new contributing cause</button>
+    <form method="get" action="/known-causes/new">
+        <button type="submit">Propose new known cause</button>
     </form>
 </li>
 {{ end }}

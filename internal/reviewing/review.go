@@ -8,11 +8,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gaqzi/incident-reviewer/internal/normalized"
+	"github.com/gaqzi/incident-reviewer/internal/known"
 
 	"github.com/google/uuid"
 
-	"github.com/gaqzi/incident-reviewer/internal/normalized/contributing"
 	"github.com/gaqzi/incident-reviewer/internal/platform/action"
 )
 
@@ -67,8 +66,8 @@ func (r Review) updateTimestamps() Review {
 	return r
 }
 
-// BindContributingCause validates the rc for uniqueness and ensures only one proximal cause at a time.
-func (r Review) BindContributingCause(rc BoundCause) (Review, error) {
+// BindKnownCause validates the rc for uniqueness and ensures only one proximal cause at a time.
+func (r Review) BindKnownCause(rc BoundCause) (Review, error) {
 	// If the new BoundCause is proximal we need to ensure the other ones aren't, so unset when we're iterating over.
 	unsetProximal := func(c BoundCause) BoundCause { return c }
 	if rc.IsProximalCause {
@@ -86,7 +85,7 @@ func (r Review) BindContributingCause(rc BoundCause) (Review, error) {
 	for i, c := range r.BoundCauses {
 		if c.Cause.ID == rc.Cause.ID &&
 			strings.EqualFold(strings.TrimSpace(c.Why), strings.TrimSpace(rc.Why)) {
-			return r, errors.New("cannot bind contributing cause with the same why: " + rc.Why)
+			return r, errors.New("cannot bind known cause with the same why: " + rc.Why)
 		}
 
 		r.BoundCauses[i] = unsetProximal(c)
@@ -97,22 +96,22 @@ func (r Review) BindContributingCause(rc BoundCause) (Review, error) {
 	return r, nil
 }
 
-func (r Review) UpdateBoundContributingCause(o BoundCause) (Review, error) {
+func (r Review) UpdateBoundKnownCause(o BoundCause) (Review, error) {
 	causes := slices.DeleteFunc(r.BoundCauses, func(rc BoundCause) bool { return rc.ID == o.ID })
 	if len(causes) == len(r.BoundCauses) {
-		return r, errors.New("cannot update contributing cause that isn't already bound")
+		return r, errors.New("cannot update known cause that isn't already bound")
 	}
 
 	r.BoundCauses = causes
-	r, err := r.BindContributingCause(o)
+	r, err := r.BindKnownCause(o)
 	if err != nil {
-		return r, fmt.Errorf("failed to add back bound contributing cause: %w", err)
+		return r, fmt.Errorf("failed to add back bound known cause: %w", err)
 	}
 
 	return r, nil
 }
 
-func (r Review) BindTrigger(t normalized.Trigger, ubt UnboundTrigger) (Review, error) {
+func (r Review) BindTrigger(t known.Trigger, ubt UnboundTrigger) (Review, error) {
 	bt := BoundTrigger{
 		ID:             uuid.Must(uuid.NewV7()),
 		Trigger:        t,
@@ -126,8 +125,8 @@ func (r Review) BindTrigger(t normalized.Trigger, ubt UnboundTrigger) (Review, e
 
 type BoundCause struct {
 	ID              uuid.UUID
-	Cause           contributing.Cause `validate:"required"`
-	Why             string             `validate:"required"`
+	Cause           known.Cause `validate:"required"`
+	Why             string      `validate:"required"`
 	IsProximalCause bool
 }
 
@@ -137,7 +136,7 @@ type UnboundTrigger struct {
 
 type BoundTrigger struct {
 	ID      uuid.UUID
-	Trigger normalized.Trigger `validate:"required"`
+	Trigger known.Trigger `validate:"required"`
 	UnboundTrigger
 }
 
@@ -146,11 +145,11 @@ func NewBoundCause() BoundCause {
 }
 
 type causeStore interface {
-	Get(ctx context.Context, id uuid.UUID) (contributing.Cause, error)
+	Get(ctx context.Context, id uuid.UUID) (known.Cause, error)
 }
 
 type triggerStore interface {
-	Get(ctx context.Context, id uuid.UUID) (normalized.Trigger, error)
+	Get(ctx context.Context, id uuid.UUID) (known.Trigger, error)
 }
 
 type Service struct {
@@ -175,7 +174,7 @@ func (s *Service) BindTrigger(ctx context.Context, reviewID uuid.UUID, triggerID
 	if err != nil {
 		return fmt.Errorf("failed to get action for binding trigger: %w", err)
 	}
-	do, ok := doer.(func(Review, normalized.Trigger, UnboundTrigger) (Review, error))
+	do, ok := doer.(func(Review, known.Trigger, UnboundTrigger) (Review, error))
 	if !ok {
 		return fmt.Errorf("failed to cast action for binding trigger: %w", err)
 	}
@@ -257,7 +256,7 @@ func (s *Service) All(ctx context.Context) ([]Review, error) {
 	return ret, nil
 }
 
-func (s *Service) BindContributingCause(ctx context.Context, reviewID uuid.UUID, causeID uuid.UUID, boundCause BoundCause) error {
+func (s *Service) BindKnownCause(ctx context.Context, reviewID uuid.UUID, causeID uuid.UUID, boundCause BoundCause) error {
 	review, err := s.reviewStore.Get(ctx, reviewID)
 	if err != nil {
 		return fmt.Errorf("failed to get review: %w", err)
@@ -265,21 +264,21 @@ func (s *Service) BindContributingCause(ctx context.Context, reviewID uuid.UUID,
 
 	cause, err := s.causeStore.Get(ctx, causeID)
 	if err != nil {
-		return fmt.Errorf("failed to get contributing cause: %w", err)
+		return fmt.Errorf("failed to get known cause: %w", err)
 	}
 
-	doer, err := s.action.Get("BindContributingCause")
+	doer, err := s.action.Get("BindKnownCause")
 	if err != nil {
-		return fmt.Errorf("failed to get action for adding contributing cause: %w", err)
+		return fmt.Errorf("failed to get action for adding known cause: %w", err)
 	}
-	do, ok := doer.(func(Review, contributing.Cause, BoundCause) (Review, error))
+	do, ok := doer.(func(Review, known.Cause, BoundCause) (Review, error))
 	if !ok {
-		return fmt.Errorf("failed to cast action for adding contributing cause: %w", err)
+		return fmt.Errorf("failed to cast action for adding known cause: %w", err)
 	}
 
 	review, err = do(review, cause, boundCause)
 	if err != nil {
-		return fmt.Errorf("failed to add contributing cause to review: %w", err)
+		return fmt.Errorf("failed to add known cause to review: %w", err)
 	}
 
 	_, err = s.Save(ctx, review)
@@ -290,23 +289,23 @@ func (s *Service) BindContributingCause(ctx context.Context, reviewID uuid.UUID,
 	return nil
 }
 
-func (s *Service) GetBoundContributingCause(ctx context.Context, reviewID uuid.UUID, boundCauseID uuid.UUID) (BoundCause, error) {
+func (s *Service) GetBoundKnownCause(ctx context.Context, reviewID uuid.UUID, boundCauseID uuid.UUID) (BoundCause, error) {
 	review, err := s.reviewStore.Get(ctx, reviewID)
 	if err != nil {
-		return BoundCause{}, fmt.Errorf("review with that id not found to relate bound contributing cause: %w", err)
+		return BoundCause{}, fmt.Errorf("review with that id not found to relate bound known cause: %w", err)
 	}
 
-	// Check for the bound contributing cause within the review
+	// Check for the bound known cause within the review
 	for _, boundCause := range review.BoundCauses {
 		if boundCause.ID == boundCauseID {
 			return boundCause, nil
 		}
 	}
 
-	return BoundCause{}, errors.New("review doesn't have that contributing cause bound: " + boundCauseID.String())
+	return BoundCause{}, errors.New("review doesn't have that known cause bound: " + boundCauseID.String())
 }
 
-func (s *Service) UpdateBoundContributingCause(ctx context.Context, reviewID uuid.UUID, update BoundCause) (BoundCause, error) {
+func (s *Service) UpdateBoundKnownCause(ctx context.Context, reviewID uuid.UUID, update BoundCause) (BoundCause, error) {
 	review, err := s.reviewStore.Get(ctx, reviewID)
 	if err != nil {
 		return BoundCause{}, fmt.Errorf("failed to get review: %w", err)
@@ -314,22 +313,22 @@ func (s *Service) UpdateBoundContributingCause(ctx context.Context, reviewID uui
 
 	newCause, err := s.causeStore.Get(ctx, update.Cause.ID)
 	if err != nil {
-		return BoundCause{}, fmt.Errorf("failed to get contributing cause: %w", err)
+		return BoundCause{}, fmt.Errorf("failed to get known cause: %w", err)
 	}
 	update.Cause = newCause
 
-	doer, err := s.action.Get("UpdateBoundContributingCause")
+	doer, err := s.action.Get("UpdateBoundKnownCause")
 	if err != nil {
-		return BoundCause{}, fmt.Errorf("failed to get action for updating bound contributing cause: %w", err)
+		return BoundCause{}, fmt.Errorf("failed to get action for updating bound known cause: %w", err)
 	}
 	do, ok := doer.(func(Review, BoundCause) (Review, error))
 	if !ok {
-		return BoundCause{}, fmt.Errorf("failed to cast action for updating bound contributing cause: %w", err)
+		return BoundCause{}, fmt.Errorf("failed to cast action for updating bound known cause: %w", err)
 	}
 
 	review, err = do(review, update)
 	if err != nil {
-		return BoundCause{}, fmt.Errorf("action to update bound contributing cause failed: %w", err)
+		return BoundCause{}, fmt.Errorf("action to update bound known cause failed: %w", err)
 	}
 
 	updatedReview, err := s.Save(ctx, review)
@@ -337,12 +336,12 @@ func (s *Service) UpdateBoundContributingCause(ctx context.Context, reviewID uui
 		return BoundCause{}, fmt.Errorf("failed to save updated review: %w", err)
 	}
 
-	// Return the updated contributing cause
+	// Return the updated known cause
 	for _, boundCause := range updatedReview.BoundCauses {
 		if boundCause.ID == update.ID {
 			return boundCause, nil
 		}
 	}
 
-	return BoundCause{}, errors.New("unexpected error: updated contributing cause not found")
+	return BoundCause{}, errors.New("unexpected error: updated known cause not found")
 }

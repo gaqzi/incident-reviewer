@@ -6,7 +6,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/gaqzi/incident-reviewer/internal/normalized/contributing"
+	"github.com/gaqzi/incident-reviewer/internal/known"
 	"github.com/gaqzi/incident-reviewer/internal/reviewing"
 )
 
@@ -93,15 +93,15 @@ func (b BuilderReview) Modify(mods ...func(r *reviewing.Review)) BuilderReview {
 	return b
 }
 
-func (b BuilderReview) WithContributingCause(rcs ...reviewing.BoundCause) BuilderReview {
+func (b BuilderReview) WithKnownCause(rcs ...reviewing.BoundCause) BuilderReview {
 	if len(rcs) == 0 {
 		rcs = append(rcs, BoundCause().Build())
 	}
 
 	for _, rc := range rcs {
-		r, err := b.r.BindContributingCause(rc)
+		r, err := b.r.BindKnownCause(rc)
 		if err != nil {
-			panic("failed to add contributing cause: " + err.Error())
+			panic("failed to add known cause: " + err.Error())
 		}
 		b.r = r
 	}
@@ -129,7 +129,7 @@ func (b BuilderBoundCause) WithID(id uuid.UUID) BuilderBoundCause {
 	return b
 }
 
-func (b BuilderBoundCause) WithCause(c contributing.Cause) BuilderBoundCause {
+func (b BuilderBoundCause) WithCause(c known.Cause) BuilderBoundCause {
 	b.rc.Cause = c
 
 	return b
@@ -143,7 +143,7 @@ func (b BuilderBoundCause) WithWhy(s string) BuilderBoundCause {
 
 func (b BuilderBoundCause) IsValid() BuilderBoundCause {
 	b.rc.ID = uuid.MustParse("0193f6e0-a83b-71aa-a712-b0f7e0521108")
-	b.rc.Cause = ContributingCause().Build()
+	b.rc.Cause = Cause().Build()
 	b.rc.Why = "We rely on basic internet infrastructure like everyone else"
 
 	return b
@@ -166,7 +166,7 @@ type BuilderBoundTrigger struct {
 func (b BuilderBoundTrigger) IsSaved() BuilderBoundTrigger {
 	b.bt.ID = uuid.MustParse("0193f6e0-a83b-71aa-a712-b0f7e0521108")
 	b.bt.UnboundTrigger = UnboundTrigger().Build()
-	b.bt.Trigger = NormalizedTrigger().Build()
+	b.bt.Trigger = Trigger().Build()
 
 	return b
 }

@@ -112,13 +112,13 @@ func TestReviewing(t *testing.T) {
 		require.Equal(t, createdAt, newCreatedAt, "expected to not have changed the created at when saving")
 		require.NotEqual(t, updatedAt, newUpdatedAt, "expected to have changed the updatedAt when saving")
 
-		// Time to bind a normalized contributing cause
+		// Time to bind a normalized known cause
 		// TODO: break this test up, it shouldn't be this big, keeping it for now because it means I'd have to refactor into
 		//  nicer and reusable components, which is good, but I just want to keep going right now.
 
-		causesForm := page.Locator(`contributing-causes form.new`)
+		causesForm := page.Locator(`known-causes form.new`)
 		// wow, this is a nasty way to get at the options, but it kinda works, so probably need to find some better way of selecting it when extracting into something reusable.
-		options, err := causesForm.Locator(`[name="contributingCauseID"] option`).All()
+		options, err := causesForm.Locator(`[name="knownCauseID"] option`).All()
 		require.NoError(t, err)
 		var chosenOption string
 		for _, opt := range options {
@@ -135,26 +135,26 @@ func TestReviewing(t *testing.T) {
 			}
 		}
 		require.NotEmpty(t, chosenOption, "expected to have found a chosen option")
-		_, err = causesForm.Locator(`[name="contributingCauseID"]`).SelectOption(playwright.SelectOptionValues{Values: &[]string{chosenOption}})
+		_, err = causesForm.Locator(`[name="knownCauseID"]`).SelectOption(playwright.SelectOptionValues{Values: &[]string{chosenOption}})
 		require.NoError(t, err, "failed to select the contribution cause")
 		require.NoError(t, causesForm.Locator(`[name="why"]`).
 			Fill("There's literally nothing we could've done since we, like everyone else, rely on core internet infrastructure."))
 		require.NoError(t, causesForm.Locator(`[name="isProximalCause"]`).Click())
 		require.NoError(t, causesForm.Locator(`button.bind[type="submit"]`).Click())
 
-		causesListing := page.Locator(`contributing-causes ul.listing`)
+		causesListing := page.Locator(`known-causes ul.listing`)
 		firstCause := causesListing.Locator(`li`).First()
 		require.NoError(
 			t,
 			assert.Locator(firstCause).ToHaveCount(1),
 			"expected the new listing to be showing up",
 		)
-		require.NoError(t, assert.Locator(firstCause.Locator(".contributingCause")).ToContainText("Third party outage"))
+		require.NoError(t, assert.Locator(firstCause.Locator(".knownCause")).ToContainText("Third party outage"))
 		require.NoError(t, assert.Locator(firstCause.Locator(".why")).
 			ToContainText("There's literally nothing we could've done since we, like everyone else, rely on core internet infrastructure."))
 		require.NoError(t, assert.Locator(firstCause).ToHaveClass("proximalCause"), "expected to have set as the proximal cause")
 
-		// Time to suggest another contributing cause, that doesn't exist, and then suggest why it should be added.
+		// Time to suggest another known cause, that doesn't exist, and then suggest why it should be added.
 		// but first, let's fill in the why for the new cause first, and make sure it stays around while we add the new cause,
 		// so that we don't lose important information while saving stuff.
 		require.NoError(t, causesForm.Locator(`[name="why"]`).Fill("look, it just fits!"))
@@ -168,21 +168,21 @@ func TestReviewing(t *testing.T) {
 		require.NoError(t, causesForm.Locator(`[name="isProximalCause"]`).Click(), "expected to have checked the proximal cause so it would mark the second as the only proximal cause")
 		require.NoError(t, newCauseForm.Locator(`button[type="submit"]`).Click())
 
-		// Time to add the contributing cause with why that we added before, and see that we have two causes in our list
+		// Time to add the known cause with why that we added before, and see that we have two causes in our list
 		require.NoError(t, causesForm.Locator(`button.bind[type="submit"]`).Click())
 		require.NoError(
 			t,
 			assert.Locator(causesListing.Locator(`li`)).ToHaveCount(2),
-			"expected both of our two bound contributing causes to be shown in the listing",
+			"expected both of our two bound known causes to be shown in the listing",
 		)
 		require.NoError(t, assert.Locator(causesListing.Locator(`li.proximalCause`)).ToHaveCount(1))
 		require.NoError(
 			t,
-			assert.Locator(causesListing.Locator(`li.proximalCause .contributingCause`)).ToHaveText("__Inconceivable__"),
+			assert.Locator(causesListing.Locator(`li.proximalCause .knownCause`)).ToHaveText("__Inconceivable__"),
 			"expected the most recently added cause to be the only one set as proximal",
 		)
 
-		// And then it's time to edit a contributing cause and see that works
+		// And then it's time to edit a known cause and see that works
 		require.NoError(t, firstCause.Locator(`button.edit`).Click())
 		require.NoError(t, firstCause.Locator(`[name="why"]`).Fill("I want to say something else now"))
 		require.NoError(t, firstCause.Locator(`button.bind[type="submit"]`).Click())

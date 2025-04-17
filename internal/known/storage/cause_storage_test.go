@@ -1,4 +1,4 @@
-package storage_test
+package storage
 
 import (
 	"context"
@@ -7,34 +7,32 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 
-	storage2 "github.com/gaqzi/incident-reviewer/internal/normalized/contributing/storage"
-	"github.com/gaqzi/incident-reviewer/internal/normalized/storage"
+	"github.com/gaqzi/incident-reviewer/internal/known"
 
-	"github.com/gaqzi/incident-reviewer/internal/normalized"
 	"github.com/gaqzi/incident-reviewer/test/a"
 )
 
-func TestTriggerMemoryStore(t *testing.T) {
-	TriggerStorageTest(t, context.Background(), func() normalized.TriggerStorage {
-		return storage.NewTriggerMemoryStore()
+func TestCauseMemoryStore(t *testing.T) {
+	KnownCauseStorageTest(t, context.Background(), func() known.CauseStorage {
+		return NewCauseMemoryStore()
 	})
 }
 
-func TriggerStorageTest(t *testing.T, ctx context.Context, storeFactory func() normalized.TriggerStorage) {
+func KnownCauseStorageTest(t *testing.T, ctx context.Context, storeFactory func() known.CauseStorage) {
 	t.Run("Save", func(t *testing.T) {
 		t.Run("returns an error when trying to save without an ID set", func(t *testing.T) {
 			store := storeFactory()
 
-			_, actual := store.Save(ctx, normalized.Trigger{})
+			_, actual := store.Save(ctx, known.Cause{})
 
-			require.ErrorIs(t, actual, storage2.ErrNoID, "expected the sentinel error for not having an ID set")
+			require.ErrorIs(t, actual, ErrNoID, "expected the sentinel error for not having an ID set")
 		})
 
 		t.Run("an object with the ID set is saved without errors", func(t *testing.T) {
-			Trigger := normalized.NewTrigger()
+			cause := known.NewCause()
 			store := storeFactory()
 
-			_, err := store.Save(ctx, Trigger)
+			_, err := store.Save(ctx, cause)
 
 			require.NoError(t, err, "expected to have saved when all fields are set")
 		})
@@ -47,13 +45,13 @@ func TriggerStorageTest(t *testing.T, ctx context.Context, storeFactory func() n
 			_, err := store.Get(ctx, uuid.Nil)
 			require.Error(t, err, "expected to not have found an item when it's not in the store")
 
-			var actualErr *storage2.NoTriggerError
+			var actualErr *NoCauseError
 			require.ErrorAs(t, err, &actualErr, "expected the specific error for not found")
 		})
 
 		t.Run("after saving, gets back the same object as save when asking by ID", func(t *testing.T) {
 			store := storeFactory()
-			expected, err := store.Save(ctx, a.NormalizedTrigger().Build())
+			expected, err := store.Save(ctx, a.Cause().Build())
 			require.NoError(t, err, "expected the valid review to have been saved successfully")
 
 			actual, err := store.Get(ctx, expected.ID)
@@ -75,7 +73,7 @@ func TriggerStorageTest(t *testing.T, ctx context.Context, storeFactory func() n
 
 		t.Run("returns the only stored item when only one exists", func(t *testing.T) {
 			store := storeFactory()
-			trigger, err := store.Save(ctx, a.NormalizedTrigger().Build())
+			cause, err := store.Save(ctx, a.Cause().Build())
 			require.NoError(t, err, "expected to have saved successfully")
 
 			actual, err := store.All(ctx)
@@ -84,7 +82,7 @@ func TriggerStorageTest(t *testing.T, ctx context.Context, storeFactory func() n
 			require.NotEmpty(t, actual)
 			require.Equal(
 				t,
-				[]normalized.Trigger{trigger},
+				[]known.Cause{cause},
 				actual,
 				"expected to have gotten back an item matching the only stored one",
 			)
@@ -92,9 +90,9 @@ func TriggerStorageTest(t *testing.T, ctx context.Context, storeFactory func() n
 
 		t.Run("with multiple reviews, returns them in descending creation order", func(t *testing.T) {
 			store := storeFactory()
-			Trigger1, err := store.Save(ctx, a.NormalizedTrigger().Build())
+			cause1, err := store.Save(ctx, a.Cause().Build())
 			require.NoError(t, err, "expected to have saved successfully")
-			Trigger2, err := store.Save(ctx, a.NormalizedTrigger().WithID(uuid.Must(uuid.NewV7())).WithName("Unbounded resource utilization").Build())
+			cause2, err := store.Save(ctx, a.Cause().WithID(uuid.Must(uuid.NewV7())).WithName("Unbounded resource utilization").Build())
 			require.NoError(t, err)
 
 			actual, err := store.All(ctx)
@@ -102,9 +100,9 @@ func TriggerStorageTest(t *testing.T, ctx context.Context, storeFactory func() n
 
 			require.Equal(
 				t,
-				[]normalized.Trigger{
-					Trigger2,
-					Trigger1,
+				[]known.Cause{
+					cause2,
+					cause1,
 				},
 				actual,
 				"expected the most recently created item to be returned first",

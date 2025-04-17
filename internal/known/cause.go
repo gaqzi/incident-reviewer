@@ -1,4 +1,4 @@
-package contributing
+package known
 
 import (
 	"context"
@@ -44,14 +44,14 @@ func NewCauseService(store CauseStorage) *CauseService {
 
 func (s *CauseService) Save(ctx context.Context, cc Cause) (Cause, error) {
 	if err := validate.Struct(ctx, cc); err != nil {
-		return cc, fmt.Errorf("failed to validate contributing cause: %w", err)
+		return cc, fmt.Errorf("failed to validate known cause: %w", err)
 	}
 
 	cc = cc.updateTimestamps()
 
 	cc, err := s.store.Save(ctx, cc)
 	if err != nil {
-		return cc, fmt.Errorf("failed to store contributing cause: %w", err)
+		return cc, fmt.Errorf("failed to store known cause: %w", err)
 	}
 
 	return cc, nil
@@ -60,7 +60,7 @@ func (s *CauseService) Save(ctx context.Context, cc Cause) (Cause, error) {
 func (s *CauseService) All(ctx context.Context) ([]Cause, error) {
 	ret, err := s.store.All(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("unable to get all contributing causes from storage: %w", err)
+		return nil, fmt.Errorf("unable to get all known causes from storage: %w", err)
 	}
 
 	return ret, nil
@@ -69,7 +69,7 @@ func (s *CauseService) All(ctx context.Context) ([]Cause, error) {
 func (s *CauseService) Get(ctx context.Context, id uuid.UUID) (Cause, error) {
 	cc, err := s.store.Get(ctx, id)
 	if err != nil {
-		return Cause{}, fmt.Errorf("failed to get contributing cause: %w", err)
+		return Cause{}, fmt.Errorf("failed to get known cause: %w", err)
 	}
 
 	return cc, nil
