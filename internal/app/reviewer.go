@@ -96,9 +96,10 @@ func Start(ctx context.Context, cfg Config) (*Server, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to add default trigger: %w", err)
 	}
+	r.Route("/triggers", web.TriggersHandler(triggerService))
 
 	reviewService := reviewing.NewService(reviewStore, causeService, triggerService)
-	r.Route("/reviews", web.ReviewsHandler(reviewService, causeService))
+	r.Route("/reviews", web.ReviewsHandler(reviewService, causeService, triggerService))
 
 	go (func() {
 		_ = server.Serve(ln)
