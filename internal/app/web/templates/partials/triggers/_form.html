@@ -1,0 +1,25 @@
+{{ if .Data.BoundTrigger.Why }}
+<form method="post" action="/reviews/{{ .Data.ReviewID }}/triggers/{{ .Data.BoundTrigger.ID }}/edit" class="new">
+{{ else }}
+<form method="post" action="/reviews/{{ .Data.ReviewID }}/triggers" class="new">
+{{ end }}
+    <ul>
+        <li>
+            <label>
+                Trigger:
+                <select name="triggerID" required>
+                    <option disabled {{ if not .Data.BoundTrigger.Why }}selected{{ end }}>-- select --</option>
+                    <option value="6A195282-04CA-4405-A6F1-678C525A001B" {{ if eq .Data.BoundTrigger.ID.String "6A195282-04CA-4405-A6F1-678C525A001B" }}selected{{ end }}>Traffic increase</option>
+                </select>
+            </label>
+        </li>
+        <li>
+            <label>
+                Why this trigger applies to this incident:
+                <textarea name="why" required>{{ .Data.BoundTrigger.Why }}</textarea>
+            </label>
+        </li>
+    </ul>
+
+    <button type="submit">{{ if .Data.BoundTrigger.Why }}Save{{else}}Add{{end}}</button>
+</form>

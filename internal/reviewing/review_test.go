@@ -256,6 +256,27 @@ func (b builderService) bindTriggerAction(er reviewing.Review, et normalized.Tri
 	return b
 }
 
+func (b builderService) updateBoundTriggerActionFail() builderService {
+	b.actionMapper.Add("UpdateBoundTrigger", func(_ reviewing.Review, _ reviewing.BoundTrigger) (reviewing.Review, error) {
+		return reviewing.Review{}, errors.New("uh-oh")
+	})
+
+	return b
+}
+
+func (b builderService) updateBoundTriggerAction(er reviewing.Review, et reviewing.BoundTrigger) builderService {
+	b.actionMapper.Add("UpdateBoundTrigger", func(r reviewing.Review, t reviewing.BoundTrigger) (reviewing.Review, error) {
+		if !reflect.DeepEqual(er, r) ||
+			!reflect.DeepEqual(et, t) {
+			return reviewing.Review{}, errors.New("the passed in values don't match the expected values")
+		}
+
+		return r, nil
+	})
+
+	return b
+}
+
 func TestService_Save(t *testing.T) {
 	t.Run("wraps any error from collaborating with action mapper", func(t *testing.T) {
 		service := newService().
@@ -582,6 +603,106 @@ func TestService_UpdateBoundContributingCause(t *testing.T) {
 	})
 }
 
+func TestService_GetBoundTrigger(t *testing.T) {
+	t.Run("when the review doesn't exist it returns an error", func(t *testing.T) {
+		service := newService().
+			getReviewFail().
+			Build(t)
+
+		_, actual := service.GetBoundTrigger(context.Background(), uuid.Nil, uuid.Nil)
+
+		require.ErrorContains(t, actual, "review with that id not found to relate bound trigger:")
+	})
+
+	t.Run("when the trigger hasn't been bound it returns an error", func(t *testing.T) {
+		review := a.Review().Build()
+		service := newService().
+			getReview(review).
+			Build(t)
+
+		_, actual := service.GetBoundTrigger(context.Background(), review.ID, a.UUID())
+
+		require.ErrorContains(t, actual, "review doesn't have that trigger bound:")
+	})
+
+	t.Run("when it's found it returns the reviewing.BoundTrigger", func(t *testing.T) {
+		boundTrigger := a.BoundTrigger().Build()
+		store := new(reviewStorageMock)
+		store.Test(t)
+		review := a.Review().WithBoundTrigger(boundTrigger).Build()
+		service := newService().
+			getReview(review).
+			Build(t)
+
+		actual, err := service.GetBoundTrigger(context.Background(), review.ID, boundTrigger.ID)
+
+		require.NoError(t, err)
+		require.Equal(t, boundTrigger, actual, "expected the matching trigger added into the reviewing.Review to be returned")
+	})
+}
+
+func TestService_UpdateBoundTrigger(t *testing.T) {
+	t.Run("when the review doesn't exist it returns an error", func(t *testing.T) {
+		service := newService().
+			getReviewFail().
+			Build(t)
+
+		_, err := service.UpdateBoundTrigger(context.Background(), a.UUID(), reviewing.BoundTrigger{})
+
+		require.ErrorContains(t, err, "failed to get review:")
+	})
+
+	t.Run("when the new boundTrigger.Trigger isn't found it returns an error", func(t *testing.T) {
+		review := a.Review().Build()
+		boundTrigger := a.BoundTrigger().Build()
+		service := newService().
+			getReview(review).
+			getTriggerFail().
+			Build(t)
+
+		_, err := service.UpdateBoundTrigger(context.Background(), review.ID, boundTrigger)
+
+		require.ErrorContains(t, err, "failed to get trigger:")
+	})
+
+	t.Run("when there is an error updating it returns an error", func(t *testing.T) {
+		review := a.Review().WithBoundTrigger(a.BoundTrigger().Build()).Build()
+		trigger := review.BoundTriggers[0].Trigger
+		updatedTrigger := review.BoundTriggers[0]
+		updatedTrigger.Why = "updated trigger"
+		service := newService().
+			getReview(review).
+			getTrigger(trigger).
+			updateBoundTriggerActionFail().
+			Build(t)
+
+		_, err := service.UpdateBoundTrigger(context.Background(), review.ID, updatedTrigger)
+
+		require.ErrorContains(t, err, "action to update bound trigger failed:")
+	})
+
+	t.Run("when the update is successful it returns the updated reviewing.BoundTrigger", func(t *testing.T) {
+		review := a.Review().WithBoundTrigger(a.BoundTrigger().Build()).Build()
+		updatedTrigger := review.BoundTriggers[0]
+		updatedTrigger.Why = "updated trigger"
+		service := newService().
+			getReview(review).
+			getTrigger(review.BoundTriggers[0].Trigger).
+			updateBoundTriggerAction(review, updatedTrigger).
+			saveAction(review).
+			saveReview((func(r reviewing.Review) reviewing.Review {
+				r.BoundTriggers[0] = updatedTrigger
+				return r
+			})(review)).
+			Build(t)
+
+		actual, err := service.UpdateBoundTrigger(context.Background(), review.ID, updatedTrigger)
+
+		require.NoError(t, err)
+		require.Equal(t, updatedTrigger, actual)
+	})
+}
+
 func TestReview_Update(t *testing.T) {
 	t.Run("an update with no changes doesn't modify the object", func(t *testing.T) {
 		orig := a.Review().Build()
@@ -770,5 +891,44 @@ func TestReview_BindTrigger(t *testing.T) {
 
 		require.Equal(t, actual, a.Review().WithBoundTrigger(a.BoundTrigger().WithID(actual.BoundTriggers[0].ID).Build()).Build())
 		// when saving a valid trigger that hasn't been saved (i.e. it doesn't have an ID yet) it sets an id and then adds it to the list of bound triggers
+	})
+}
+
+func TestReview_UpdateBoundTrigger(t *testing.T) {
+	t.Run("when the updated trigger isn't already bound it returns an error", func(t *testing.T) {
+		review := a.Review().Build()
+		updatedTrigger := a.BoundTrigger().Build()
+
+		_, err := review.UpdateBoundTrigger(updatedTrigger)
+
+		require.Error(t, err)
+		require.ErrorContains(t, err, "cannot update trigger that isn't already bound")
+	})
+
+	t.Run("when the updated trigger is updated it replaces the existing trigger", func(t *testing.T) {
+		// Create two different triggers
+		firstTrigger := a.BoundTrigger().Build()
+		secondTrigger := a.BoundTrigger().WithID(a.UUID()).Build()
+
+		// Create a review with both triggers
+		review := a.Review().
+			WithBoundTrigger(firstTrigger).
+			WithBoundTrigger(secondTrigger).
+			Build()
+
+		// Create an updated version of the first trigger with a different "why"
+		updatedTrigger := firstTrigger
+		updatedTrigger.Why = "updated trigger"
+
+		// Update the first trigger
+		actual, err := review.UpdateBoundTrigger(updatedTrigger)
+
+		require.NoError(t, err)
+		require.Equal(
+			t,
+			[]reviewing.BoundTrigger{secondTrigger, updatedTrigger},
+			actual.BoundTriggers,
+			"expected the first trigger to have been replaced with the updated one",
+		)
 	})
 }

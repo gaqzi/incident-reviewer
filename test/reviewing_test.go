@@ -221,13 +221,16 @@ func TestReviewing(t *testing.T) {
 			"expected to have one item listed after creating it",
 		)
 
-		firstTrigger, err := triggerListing.Locator("li").First().InnerText()
-		require.NoError(t, err, "failed to get the text of the first trigger")
-		require.Equal(
-			t,
-			"Traffic increase -- Marketing campaign started",
-			firstTrigger,
-		)
+		firstTrigger := triggerListing.Locator("li").First()
+		require.NoError(t, assert.Locator(firstTrigger.Locator(".name")).ToContainText("Traffic increase"))
+		require.NoError(t, assert.Locator(firstTrigger.Locator(".why")).
+			ToContainText("Marketing campaign started"))
+
+		// Edit the trigger and change the description
+		require.NoError(t, firstTrigger.Locator(`form button.edit`).Click())
+		require.NoError(t, firstTrigger.Locator(`[name="why"]`).Fill("Marketing campaign started again"))
+		require.NoError(t, firstTrigger.Locator(`[type="submit"]`).Click())
+		require.NoError(t, assert.Locator(firstTrigger.Locator(".why")).ToContainText("Marketing campaign started again"))
 
 		require.NoError(t, pw.Stop(), "failed to stop playwright")
 	})

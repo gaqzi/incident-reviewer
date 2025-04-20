@@ -124,6 +124,18 @@ func (r Review) BindTrigger(t normalized.Trigger, ubt UnboundTrigger) (Review, e
 	return r, nil
 }
 
+func (r Review) UpdateBoundTrigger(o BoundTrigger) (Review, error) {
+	triggers := slices.DeleteFunc(r.BoundTriggers, func(bt BoundTrigger) bool { return bt.ID == o.ID })
+	if len(triggers) == len(r.BoundTriggers) {
+		return r, errors.New("cannot update trigger that isn't already bound")
+	}
+
+	triggers = append(triggers, o)
+	r.BoundTriggers = triggers
+
+	return r, nil
+}
+
 type BoundCause struct {
 	ID              uuid.UUID
 	Cause           contributing.Cause `validate:"required"`
@@ -345,4 +357,61 @@ func (s *Service) UpdateBoundContributingCause(ctx context.Context, reviewID uui
 	}
 
 	return BoundCause{}, errors.New("unexpected error: updated contributing cause not found")
+}
+
+func (s *Service) GetBoundTrigger(ctx context.Context, reviewID uuid.UUID, boundTriggerID uuid.UUID) (BoundTrigger, error) {
+	review, err := s.reviewStore.Get(ctx, reviewID)
+	if err != nil {
+		return BoundTrigger{}, fmt.Errorf("review with that id not found to relate bound trigger: %w", err)
+	}
+
+	// Check for the bound trigger within the review
+	for _, boundTrigger := range review.BoundTriggers {
+		if boundTrigger.ID == boundTriggerID {
+			return boundTrigger, nil
+		}
+	}
+
+	return BoundTrigger{}, errors.New("review doesn't have that trigger bound: " + boundTriggerID.String())
+}
+
+func (s *Service) UpdateBoundTrigger(ctx context.Context, reviewID uuid.UUID, update BoundTrigger) (BoundTrigger, error) {
+	review, err := s.reviewStore.Get(ctx, reviewID)
+	if err != nil {
+		return BoundTrigger{}, fmt.Errorf("failed to get review: %w", err)
+	}
+
+	newTrigger, err := s.triggerStore.Get(ctx, update.Trigger.ID)
+	if err != nil {
+		return BoundTrigger{}, fmt.Errorf("failed to get trigger: %w", err)
+	}
+	update.Trigger = newTrigger
+
+	doer, err := s.action.Get("UpdateBoundTrigger")
+	if err != nil {
+		return BoundTrigger{}, fmt.Errorf("failed to get action for updating bound trigger: %w", err)
+	}
+	do, ok := doer.(func(Review, BoundTrigger) (Review, error))
+	if !ok {
+		return BoundTrigger{}, fmt.Errorf("failed to cast action for updating bound trigger: %w", err)
+	}
+
+	review, err = do(review, update)
+	if err != nil {
+		return BoundTrigger{}, fmt.Errorf("action to update bound trigger failed: %w", err)
+	}
+
+	updatedReview, err := s.Save(ctx, review)
+	if err != nil {
+		return BoundTrigger{}, fmt.Errorf("failed to save updated review: %w", err)
+	}
+
+	// Return the updated trigger
+	for _, boundTrigger := range updatedReview.BoundTriggers {
+		if boundTrigger.ID == update.ID {
+			return boundTrigger, nil
+		}
+	}
+
+	return BoundTrigger{}, errors.New("unexpected error: updated trigger not found")
 }

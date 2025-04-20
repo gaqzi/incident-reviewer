@@ -16,6 +16,7 @@ import (
 	"github.com/go-playground/form/v4"
 	"github.com/google/uuid"
 
+	"github.com/gaqzi/incident-reviewer/internal/normalized"
 	"github.com/gaqzi/incident-reviewer/internal/normalized/contributing"
 	"github.com/gaqzi/incident-reviewer/internal/reviewing"
 	"github.com/gaqzi/incident-reviewer/internal/reviewing/storage"
@@ -36,6 +37,8 @@ type reviewingService interface {
 	GetBoundContributingCause(ctx context.Context, reviewID uuid.UUID, boundCauseID uuid.UUID) (reviewing.BoundCause, error)
 	UpdateBoundContributingCause(ctx context.Context, reviewID uuid.UUID, boundCause reviewing.BoundCause) (reviewing.BoundCause, error)
 	BindTrigger(ctx context.Context, reviewID uuid.UUID, triggerID uuid.UUID, trigger reviewing.UnboundTrigger) error
+	GetBoundTrigger(ctx context.Context, reviewID uuid.UUID, boundTriggerID uuid.UUID) (reviewing.BoundTrigger, error)
+	UpdateBoundTrigger(ctx context.Context, reviewID uuid.UUID, boundTrigger reviewing.BoundTrigger) (reviewing.BoundTrigger, error)
 }
 
 type causeAller interface {
@@ -117,6 +120,8 @@ func ReviewsHandler(service reviewingService, causeStore causeAller) func(chi.Ro
 			r.Post("/contributing-causes/{boundCauseID}/edit", app.UpdateBoundContributingCause)
 
 			r.Post("/triggers", app.BindTrigger)
+			r.Get("/triggers/{boundTriggerID}/edit", app.EditBoundTrigger)
+			r.Post("/triggers/{boundTriggerID}/edit", app.UpdateBoundTrigger)
 		})
 	}
 }
@@ -636,6 +641,114 @@ func (a *reviewsHandler) BindTrigger(w http.ResponseWriter, r *http.Request) {
 
 	if err := a.pp.Render(w, "reviews/show/_triggers.html", map[string]any{"Data": data}); err != nil {
 		slog.Error("failed to render bind trigger", "reviewID", reviewID, "data", data, "error", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+func (a *reviewsHandler) EditBoundTrigger(w http.ResponseWriter, r *http.Request) {
+	h := a.htmx.NewHandler(w, r)
+
+	if !h.IsHxRequest() {
+		h.WriteHeader(http.StatusNotFound)
+		h.JustWriteString("non-htmx requests not yet supported")
+	}
+
+	reviewID, err := uuid.Parse(r.PathValue("id"))
+	if err != nil {
+		slog.Error("failed to parse id for edit trigger", "id", r.PathValue("id"), "error", err)
+		h.WriteHeader(http.StatusBadRequest)
+		h.JustWriteString("invalid id")
+		return
+	}
+
+	boundTriggerID, err := uuid.Parse(r.PathValue("boundTriggerID"))
+	if err != nil {
+		slog.Error("failed to parse bound trigger id for editing trigger", "id", r.PathValue("id"), "boundTriggerID", r.PathValue("boundTriggerID"), "error", err)
+		h.WriteHeader(http.StatusBadRequest)
+		h.JustWriteString("invalid id")
+		return
+	}
+
+	boundTrigger, err := a.service.GetBoundTrigger(r.Context(), reviewID, boundTriggerID)
+	if err != nil {
+		slog.Error("failed to get bound trigger", "id", reviewID, "boundTriggerID", boundTriggerID, "error", err)
+		h.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	data := map[string]any{
+		"BoundTrigger":   toBoundTriggerBasic(boundTrigger),
+		"boundTriggerID": boundTriggerID,
+		"ReviewID":       reviewID,
+	}
+
+	if err := a.pp.Render(w, "partials/triggers/_form.html", map[string]any{"Data": data}); err != nil {
+		slog.Error("failed to render edit bound trigger form", "reviewID", reviewID, "boundTriggerID", boundTriggerID, "error", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+func (a *reviewsHandler) UpdateBoundTrigger(w http.ResponseWriter, r *http.Request) {
+	h := a.htmx.NewHandler(w, r)
+
+	if !h.IsHxRequest() {
+		h.WriteHeader(http.StatusNotFound)
+		h.JustWriteString("non-htmx requests not yet supported")
+		return
+	}
+
+	reviewID, err := uuid.Parse(r.PathValue("id"))
+	if err != nil {
+		slog.Error("failed to parse id for update trigger", "id", r.PathValue("id"), "error", err)
+		h.WriteHeader(http.StatusBadRequest)
+		h.JustWriteString("invalid id")
+		return
+	}
+
+	boundTriggerID, err := uuid.Parse(r.PathValue("boundTriggerID"))
+	if err != nil {
+		slog.Error("failed to parse bound trigger id for updating trigger", "id", r.PathValue("id"), "boundTriggerID", r.PathValue("boundTriggerID"), "error", err)
+		h.WriteHeader(http.StatusBadRequest)
+		h.JustWriteString("invalid id")
+		return
+	}
+
+	if err := r.ParseForm(); err != nil {
+		slog.Error("failed to parse form", "error", err)
+		h.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	var updatedTrigger TriggerForm
+	if err := a.decoder.Decode(&updatedTrigger, r.PostForm); err != nil {
+		slog.Error("failed to decode request form for updating trigger", "error", err)
+		h.WriteHeader(http.StatusBadRequest)
+		h.JustWriteString(err.Error())
+		return
+	}
+
+	boundTrigger, err := a.service.UpdateBoundTrigger(r.Context(), reviewID, reviewing.BoundTrigger{
+		ID:      boundTriggerID,
+		Trigger: normalized.Trigger{ID: updatedTrigger.TriggerID},
+		UnboundTrigger: reviewing.UnboundTrigger{
+			Why: updatedTrigger.Why,
+		},
+	})
+	if err != nil {
+		slog.Error("failed to update bound trigger", "reviewID", reviewID, "boundTriggerID", boundTriggerID, "error", err)
+		h.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	data := map[string]any{
+		"ReviewID": reviewID,
+		"Trigger":  toBoundTriggerBasic(boundTrigger),
+	}
+
+	if err := a.pp.Render(w, "partials/triggers/_bound-li.html", data); err != nil {
+		slog.Error("failed to render after updating bound trigger", "reviewID", reviewID, "boundTriggerID", boundTriggerID, "error", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

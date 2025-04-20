@@ -38,5 +38,9 @@ func reviewServiceActions() *action.Mapper {
 		return r.BindTrigger(t, ubt)
 	})
 
+	m.Add("UpdateBoundTrigger", func(r Review, o BoundTrigger) (Review, error) {
+		return r.UpdateBoundTrigger(o)
+	})
+
 	return m
 }

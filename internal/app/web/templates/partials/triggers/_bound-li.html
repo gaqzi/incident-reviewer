@@ -1,0 +1,6 @@
+<li hx-target="this" hx-swap="innerHTML">
+    <form method="get" action="/reviews/{{ .ReviewID }}/triggers/{{ .Trigger.ID }}/edit">
+        <button class="edit" type="submit" title="Edit">✍️</button>
+    </form>
+    <span class="name">{{ .Trigger.Name }}</span> — <span class="why">{{ .Trigger.Why }}</span>
+</li>
