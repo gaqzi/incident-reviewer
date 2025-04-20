@@ -24,6 +24,7 @@ func TestActionMapper(t *testing.T) {
 				"UpdateBoundContributingCause",
 				"Save",
 				"BindTrigger",
+				"UpdateBoundTrigger",
 			},
 			mapper.All(),
 			"expected all causes to be listed here so we catch when we add new or remove one",
@@ -67,6 +68,50 @@ func TestActionMapper(t *testing.T) {
 			Review{BoundTriggers: []BoundTrigger{{ID: review.BoundTriggers[0].ID, Trigger: trigger, UnboundTrigger: UnboundTrigger{Why: "a good reason"}}}},
 			review,
 			"expected the contributing trigger to have been set on the BoundTrigger and then added to the Review",
+		)
+	})
+
+	t.Run("UpdateBoundTrigger updates the BoundTrigger in the Review", func(t *testing.T) {
+		mapper := reviewServiceActions()
+
+		doer, err := mapper.Get("UpdateBoundTrigger")
+		require.NoError(t, err)
+		do, ok := doer.(func(Review, BoundTrigger) (Review, error))
+		require.True(t, ok)
+
+		// Create a review with a bound trigger
+		triggerID := uuid.Must(uuid.NewV7())
+		review := Review{
+			BoundTriggers: []BoundTrigger{
+				{
+					ID:      triggerID,
+					Trigger: normalized.Trigger{Name: "Original"},
+					UnboundTrigger: UnboundTrigger{
+						Why: "original reason",
+					},
+				},
+			},
+		}
+
+		// Create an updated trigger
+		updatedTrigger := BoundTrigger{
+			ID:      triggerID,
+			Trigger: normalized.Trigger{Name: "Updated"},
+			UnboundTrigger: UnboundTrigger{
+				Why: "updated reason",
+			},
+		}
+
+		// Update the trigger
+		updatedReview, err := do(review, updatedTrigger)
+		require.NoError(t, err)
+
+		// Verify the trigger was updated
+		require.Equal(
+			t,
+			Review{BoundTriggers: []BoundTrigger{updatedTrigger}},
+			updatedReview,
+			"expected the trigger to have been updated in the review",
 		)
 	})
 

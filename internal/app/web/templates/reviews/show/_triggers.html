@@ -17,7 +17,7 @@
 
     <ul class="listing">
         {{ range .Data.BoundTriggers }}
-           <li>{{ .Name}} -- {{ .Why }}</li>
+            {{ template "partials/triggers/_bound-li.html" map nil "ReviewID" $.Data.ReviewID "Trigger" . }}
         {{ end }}
     </ul>
 </section>
