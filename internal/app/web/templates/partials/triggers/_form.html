@@ -4,15 +4,7 @@
 <form method="post" action="/reviews/{{ .Data.ReviewID }}/triggers" class="new">
 {{ end }}
     <ul>
-        <li>
-            <label>
-                Trigger:
-                <select name="triggerID" required>
-                    <option disabled {{ if not .Data.BoundTrigger.Why }}selected{{ end }}>-- select --</option>
-                    <option value="6A195282-04CA-4405-A6F1-678C525A001B" {{ if eq .Data.BoundTrigger.ID.String "6A195282-04CA-4405-A6F1-678C525A001B" }}selected{{ end }}>Traffic increase</option>
-                </select>
-            </label>
-        </li>
+        {{ template "partials/triggers/_trigger-options.html" .Data }}
         <li>
             <label>
                 Why this trigger applies to this incident:
@@ -21,5 +13,5 @@
         </li>
     </ul>
 
-    <button type="submit">{{ if .Data.BoundTrigger.Why }}Save{{else}}Add{{end}}</button>
+    <button class="bind" type="submit">{{ if .Data.BoundTrigger.Why }}Save{{else}}Add{{end}}</button>
 </form>
