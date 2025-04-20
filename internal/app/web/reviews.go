@@ -46,14 +46,15 @@ type causeAller interface {
 }
 
 type reviewsHandler struct {
-	htmx       *htmx.HTMX
-	decoder    *form.Decoder
-	causeStore causeAller
-	service    reviewingService
-	pp         *passepartout.Passepartout
+	htmx         *htmx.HTMX
+	decoder      *form.Decoder
+	causeStore   causeAller
+	triggerStore triggerService
+	service      reviewingService
+	pp           *passepartout.Passepartout
 }
 
-func ReviewsHandler(service reviewingService, causeStore causeAller) func(chi.Router) {
+func ReviewsHandler(service reviewingService, causeStore causeAller, triggerStore triggerService) func(chi.Router) {
 	fsys, err := passepartout.FSWithoutPrefix(templates, "templates")
 	if err != nil {
 		panic(err)
@@ -83,10 +84,11 @@ func ReviewsHandler(service reviewingService, causeStore causeAller) func(chi.Ro
 		},
 	})
 	app := reviewsHandler{
-		htmx:       htmx.New(),
-		decoder:    form.NewDecoder(),
-		causeStore: causeStore,
-		service:    service,
+		htmx:         htmx.New(),
+		decoder:      form.NewDecoder(),
+		causeStore:   causeStore,
+		triggerStore: triggerStore,
+		service:      service,
 		pp: passepartout.New(
 			ppdefaults.NewLoaderBuilder().
 				WithDefaults(fsys).
@@ -266,12 +268,18 @@ func (a *reviewsHandler) Show(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	triggers, err := a.loadTriggers(r.Context(), h)
+	if err != nil {
+		return
+	}
+
 	httpReview := convertToHttpObject(review)
 	data := map[string]any{
 		"Review":             httpReview,
 		"BoundCauses":        httpReview.BoundCauses,
 		"BoundTriggers":      httpReview.BoundTriggers,
 		"ContributingCauses": convertContributingCauseToHttpObjects(contributingCauses),
+		"Triggers":           convertTriggersToHttpObjects(triggers),
 		"ReviewID":           reviewID,
 		"ContributingCause":  BoundCauseBasic{},
 		"BoundTrigger":       BoundTriggerBasic{},
@@ -585,6 +593,15 @@ func (a *reviewsHandler) loadContributingCauses(ctx context.Context, h *htmx.Han
 	return contributingCauses, nil
 }
 
+func (a *reviewsHandler) loadTriggers(ctx context.Context, h *htmx.Handler) ([]normalized.Trigger, error) {
+	triggers, err := a.triggerStore.All(ctx)
+	if a.hasErrored(h, err, http.StatusInternalServerError, "failed to get all triggers", "error", err) {
+		return nil, err
+	}
+
+	return triggers, nil
+}
+
 func (a *reviewsHandler) BindTrigger(w http.ResponseWriter, r *http.Request) {
 	h := a.htmx.NewHandler(w, r)
 
@@ -632,11 +649,17 @@ func (a *reviewsHandler) BindTrigger(w http.ResponseWriter, r *http.Request) {
 	}
 	httpReview := convertToHttpObject(review)
 
+	triggers, err := a.loadTriggers(r.Context(), h)
+	if err != nil {
+		return
+	}
+
 	data := map[string]any{
 		"Review":        httpReview,
 		"ReviewID":      reviewID,
 		"BoundTrigger":  BoundTriggerBasic{},
 		"BoundTriggers": httpReview.BoundTriggers,
+		"Triggers":      convertTriggersToHttpObjects(triggers),
 	}
 
 	if err := a.pp.Render(w, "reviews/show/_triggers.html", map[string]any{"Data": data}); err != nil {
@@ -677,10 +700,16 @@ func (a *reviewsHandler) EditBoundTrigger(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	triggers, err := a.loadTriggers(r.Context(), h)
+	if err != nil {
+		return
+	}
+
 	data := map[string]any{
 		"BoundTrigger":   toBoundTriggerBasic(boundTrigger),
 		"boundTriggerID": boundTriggerID,
 		"ReviewID":       reviewID,
+		"Triggers":       convertTriggersToHttpObjects(triggers),
 	}
 
 	if err := a.pp.Render(w, "partials/triggers/_form.html", map[string]any{"Data": data}); err != nil {

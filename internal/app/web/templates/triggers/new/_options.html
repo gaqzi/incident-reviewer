@@ -1,0 +1,18 @@
+<li hx-target="this" hx-swap="innerHTML" hx-replace-url="false">
+    <label>
+        Trigger:
+        {{ $selectedID := .SelectedTriggerID }}
+        <select name="triggerID" required>
+            <option disabled selected>-- select --</option>
+            {{ range .Triggers }}
+            <option value="{{ .ID }}" {{ if eq .ID.String $selectedID }}selected{{ end }}>
+                {{ .Name }} — {{ .Description }}
+            </option>
+            {{ end }}
+        </select>
+    </label>
+
+    <form method="get" action="/triggers/new">
+        <button type="submit">Propose new trigger</button>
+    </form>
+</li>

@@ -1,0 +1,16 @@
+<li hx-target="this" hx-swap="innerHTML" hx-replace-url="false">
+    <label>
+        Trigger:
+        {{ $selectedID := .BoundTrigger.ID.String }}
+        <select name="triggerID" required>
+            <option disabled {{ if not .BoundTrigger.Why }}selected{{ end }}>-- select --</option>
+            {{ range .Triggers }}
+            <option value="{{ .ID }}" {{ if eq .ID.String $selectedID }}selected{{ end }}>
+                {{ .Name }}
+            </option>
+            {{ end }}
+        </select>
+    </label>
+
+    <button hx-get="/triggers/new" class="propose">Propose new trigger</button>
+</li>

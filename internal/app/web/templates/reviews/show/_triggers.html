@@ -1,19 +1,6 @@
 <section id="triggers" hx-target="this" hx-swap="outerHTML">
     <h1>Triggers</h1>
-    <form class="new" method="post" action="/reviews/{{ .Data.ReviewID }}/triggers">
-        <label>
-            Trigger:
-            <select  name="triggerID" required>
-                <option disabled selected>-- select --</option>
-                <option value="6A195282-04CA-4405-A6F1-678C525A001B">Traffic increase</option>
-            </select>
-        </label>
-        <label>
-            Why:
-            <textarea name="why"></textarea>
-        </label>
-        <button type="submit">Add</button>
-    </form>
+    {{ template "partials/triggers/_form.html" . }}
 
     <ul class="listing">
         {{ range .Data.BoundTriggers }}

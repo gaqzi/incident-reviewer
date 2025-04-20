@@ -232,6 +232,52 @@ func TestReviewing(t *testing.T) {
 		require.NoError(t, firstTrigger.Locator(`[type="submit"]`).Click())
 		require.NoError(t, assert.Locator(firstTrigger.Locator(".why")).ToContainText("Marketing campaign started again"))
 
+		// Time to suggest another trigger, that doesn't exist, and then suggest why it should be added.
+		// but first, let's fill in the why for the new trigger first, and make sure it stays around while we add the new trigger,
+		// so that we don't lose important information while saving stuff.
+		require.NoError(t, triggerForm.Locator(`[name="why"]`).Fill("this is a critical trigger!"))
+		require.NoError(t, triggerForm.Locator(`button.propose`).Click())
+
+		newTriggerForm := triggerForm.Locator("form")
+		require.NoError(t, newTriggerForm.Locator(`[name="name"]`).Fill("__New Trigger__"))
+		require.NoError(t, newTriggerForm.Locator(`[name="description"]`).Fill("This is a new trigger that should be added to the system"))
+		require.NoError(t, newTriggerForm.Locator(`button[type="submit"]`).Click())
+
+		// Time to add the trigger with why that we added before, and see that we have two triggers in our list
+		require.NoError(t, triggerForm.Locator(`button.bind[type="submit"]`).Click())
+		require.NoError(
+			t,
+			assert.Locator(triggerListing.Locator(`li`)).ToHaveCount(2),
+			"expected both of our two bound triggers to be shown in the listing",
+		)
+		require.NoError(
+			t,
+			assert.Locator(triggerListing.Locator(`li:nth-child(2) .name`)).ToHaveText("__New Trigger__"),
+			"expected the most recently added trigger to be shown in the listing",
+		)
+
+		// Time to verify that the option has been added to the select
+		// XXX: urgh, this is not pretty, need to find some kind of pattern for this
+		options, err = triggerForm.Locator(`select[name="triggerID"] option`).All()
+		require.NoError(t, err)
+		require.Equal(t, 3, len(options), "expected to have three options after adding a second selectable trigger")
+		var hasNewTrigger bool
+		var foundTriggers []string
+		for _, opt := range options {
+			text, err := opt.AllInnerTexts()
+			require.NoError(t, err)
+
+			for _, tt := range text {
+				if strings.Contains(tt, "__New Trigger__") {
+					hasNewTrigger = true
+					break
+				}
+
+				foundTriggers = append(foundTriggers, strings.TrimSpace(tt))
+			}
+		}
+		require.True(t, hasNewTrigger, "expected to have found the new trigger in the list of options, found triggers: %s", foundTriggers)
+
 		require.NoError(t, pw.Stop(), "failed to stop playwright")
 	})
 }
