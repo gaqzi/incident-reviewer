@@ -25,12 +25,5 @@
     {{ end}}
 {{ end }}
 
-{{ child "contributing-causes"
-    "BoundCauses" .Data.BoundCauses
-    "ContributingCause" .Data.ContributingCause
-    "ContributingCauses" .Data.ContributingCauses
-    "ReviewID" .Data.ReviewID }}
-
-{{ child "triggers"
-    "ReviewID" .Data.ReviewID
-    "BoundTriggers" .Data.BoundTriggers }}
+{{ template "reviews/show/_contributing-causes.html" . }}
+{{ template "reviews/show/_triggers.html" . }}

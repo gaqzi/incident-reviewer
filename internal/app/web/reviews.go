@@ -4,13 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"html/template"
 	"log/slog"
 	"net/http"
 	"time"
 
 	"github.com/donseba/go-htmx"
-	"github.com/donseba/go-partial"
-	"github.com/donseba/go-partial/connector"
+	"github.com/gaqzi/passepartout"
+	"github.com/gaqzi/passepartout/ppdefaults"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/form/v4"
 	"github.com/google/uuid"
@@ -43,27 +44,55 @@ type causeAller interface {
 
 type reviewsHandler struct {
 	htmx       *htmx.HTMX
-	partial    *partial.Service
 	decoder    *form.Decoder
 	causeStore causeAller
 	service    reviewingService
+	pp         *passepartout.Passepartout
 }
 
 func ReviewsHandler(service reviewingService, causeStore causeAller) func(chi.Router) {
+	fsys, err := passepartout.FSWithoutPrefix(templates, "templates")
+	if err != nil {
+		panic(err)
+	}
+
+	partials := &ppdefaults.PartialsWithCommon{FS: fsys, CommonDir: "partials"}
+	defaultTemplate := template.New("").Funcs(map[string]any{
+		"map": func(d map[string]any, args ...any) (map[string]any, error) {
+			if d == nil {
+				d = make(map[string]any, len(args)/2)
+			}
+
+			if oddArgs := len(args)%2 != 0; oddArgs {
+				return nil, fmt.Errorf("did not receive an even key/value pair of arguments for map: %s", args)
+			}
+
+			for i := 0; i < len(args); i += 2 {
+				key, ok := args[i].(string)
+				if !ok {
+					return nil, fmt.Errorf("argument %d is not a string: %q", i, args[i])
+				}
+
+				d[key] = args[i+1]
+			}
+
+			return d, nil
+		},
+	})
 	app := reviewsHandler{
 		htmx:       htmx.New(),
 		decoder:    form.NewDecoder(),
 		causeStore: causeStore,
 		service:    service,
+		pp: passepartout.New(
+			ppdefaults.NewLoaderBuilder().
+				WithDefaults(fsys).
+				TemplateLoader(ppdefaults.NewCachedLoader(&ppdefaults.TemplateByNameLoader{FS: fsys})).
+				PartialsFor(partials.Load).
+				TemplateConfig(defaultTemplate).
+				Build(),
+		),
 	}
-
-	partialConf := partial.Config{
-		Connector: connector.NewHTMX(&connector.Config{
-			UseURLQuery: true, // Allow fallback to URL query parameters (???)
-		}),
-		UseCache: true,
-	}
-	app.partial = partial.NewService(&partialConf)
 
 	// Handle UUIDs transparently in the forms.
 	app.decoder.RegisterCustomTypeFunc(func(vals []string) (interface{}, error) {
@@ -90,20 +119,6 @@ func ReviewsHandler(service reviewingService, causeStore causeAller) func(chi.Ro
 			r.Post("/triggers", app.BindTrigger)
 		})
 	}
-}
-
-func (a *reviewsHandler) layout(ps ...*partial.Partial) *partial.Layout {
-	if len(ps) > 1 {
-		panic(fmt.Sprintf("only one partial is allowed, got: %d", len(ps)))
-	}
-
-	layout := a.partial.NewLayout().FS(templates)
-
-	for _, p := range ps {
-		layout.Set(p)
-	}
-
-	return layout
 }
 
 func (a *reviewsHandler) Index(w http.ResponseWriter, r *http.Request) {
@@ -139,16 +154,6 @@ type BoundCauseForm struct {
 	CreatedAt time.Time
 }
 
-type TriggerForm struct {
-	ID        uuid.UUID `form:"id"`
-	ReviewID  uuid.UUID `form:"reviewID"`
-	TriggerID uuid.UUID `form:"triggerID"`
-	Why       string    `form:"why"`
-
-	UpdatedAt time.Time
-	CreatedAt time.Time
-}
-
 type BoundCauseBasic struct {
 	ID              uuid.UUID
 	Name            string
@@ -161,6 +166,13 @@ type BoundTriggerBasic struct {
 	ID   uuid.UUID
 	Name string
 	Why  string
+}
+
+type TriggerForm struct {
+	ID        uuid.UUID `form:"id"`
+	ReviewID  uuid.UUID `form:"reviewID"`
+	TriggerID uuid.UUID `form:"triggerID"`
+	Why       string    `form:"why"`
 }
 
 type ContributingCauseBasic struct {
@@ -221,18 +233,7 @@ func (a *reviewsHandler) renderIndex(w http.ResponseWriter, r *http.Request, dat
 		data["Reviews"] = convertToHttpObjects(reviews)
 	}
 
-	layout := a.
-		layout(partial.
-			NewID("content", "templates/reviews/index.html").
-			SetData(data).
-			With(partial.
-				NewID("new-review", "templates/reviews/_new.html", "templates/reviews/__review-fields.html").
-				SetFileSystem(templates),
-			),
-		)
-	layout.Wrap(partial.NewID("base", "templates/reviews/base.html"))
-
-	if err := layout.WriteWithRequest(r.Context(), w, r); err != nil {
+	if err := a.pp.RenderInLayout(w, "layouts/standard.html", "reviews/index.html", map[string]any{"Data": data}); err != nil {
 		slog.Error("failed to render page", "page", "reviews/index", "error", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -261,36 +262,17 @@ func (a *reviewsHandler) Show(w http.ResponseWriter, r *http.Request) {
 	}
 
 	httpReview := convertToHttpObject(review)
-	layout := a.
-		layout(partial.
-			NewID("content", "templates/reviews/show.html").
-			AddData("Review", httpReview).
-			AddData("BoundCauses", httpReview.BoundCauses).
-			AddData("ContributingCauses", convertContributingCauseToHttpObjects(contributingCauses)).
-			AddData("ReviewID", reviewID).
-			AddData("ContributingCause", BoundCauseBasic{}).
-			With(partial.
-				NewID("contributing-causes", "templates/reviews/_contributing-causes.html").
-				SetFileSystem(templates).
-				With(partial.
-					NewID("BindContributingCause",
-						"templates/contributing-causes/binding/_form.html",
-						"templates/contributing-causes/binding/__causes-options.html").
-					SetFileSystem(templates),
-				).
-				With(partial.
-					NewID("bound-contributing-cause-li", "templates/reviews/__contributing-cause-bound-li.html").
-					SetFileSystem(templates),
-				),
-			).
-			With(partial.
-				NewID("triggers", "templates/reviews/_triggers.html").
-				SetFileSystem(templates),
-			),
-		).
-		Wrap(partial.NewID("base", "templates/reviews/base.html"))
+	data := map[string]any{
+		"Review":             httpReview,
+		"BoundCauses":        httpReview.BoundCauses,
+		"BoundTriggers":      httpReview.BoundTriggers,
+		"ContributingCauses": convertContributingCauseToHttpObjects(contributingCauses),
+		"ReviewID":           reviewID,
+		"ContributingCause":  BoundCauseBasic{},
+		"BoundTrigger":       BoundTriggerBasic{},
+	}
 
-	if err := layout.WriteWithRequest(r.Context(), w, r); err != nil {
+	if err := a.pp.RenderInLayout(w, "layouts/standard.html", "reviews/show.html", map[string]any{"Data": data}); err != nil {
 		slog.Error("failed to render a review", "reviewID", reviewID, "error", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -325,19 +307,12 @@ func (a *reviewsHandler) Edit(w http.ResponseWriter, r *http.Request) {
 		"Review": convertToHttpObject(review),
 	}
 
-	page := htmx.NewComponent("templates/reviews/edit.html").
-		FS(templates).
-		SetData(data).
-		Attach("templates/reviews/__review-fields.html").
-		Wrap(baseContent(), "Body")
-
-	_, err = h.Render(r.Context(), page)
+	err = a.pp.RenderInLayout(w, "layouts/standard.html", "reviews/edit.html", map[string]any{"Data": data})
 	if err != nil {
 		slog.Error("failed to render", "error", err)
 		h.WriteHeader(http.StatusInternalServerError)
 		_, _ = h.WriteString("failed to render")
 	}
-
 }
 
 func (a *reviewsHandler) Update(w http.ResponseWriter, r *http.Request) {
@@ -445,28 +420,15 @@ func (a *reviewsHandler) BindContributingCause(w http.ResponseWriter, r *http.Re
 	}
 
 	httpReview := convertToHttpObject(review)
-	layout := a.layout(
-		partial.
-			NewID("contributing-causes", "templates/reviews/_contributing-causes.html").
-			SetFileSystem(templates).
-			AddData("Review", httpReview).
-			AddData("BoundCauses", httpReview.BoundCauses).
-			AddData("ContributingCauses", convertContributingCauseToHttpObjects(contributingCauses)).
-			AddData("ReviewID", reviewID).
-			AddData("ContributingCause", BoundCauseBasic{}).
-			With(partial.
-				NewID("BindContributingCause",
-					"templates/contributing-causes/binding/_form.html",
-					"templates/contributing-causes/binding/__causes-options.html").
-				SetFileSystem(templates),
-			).
-			With(partial.
-				NewID("bound-contributing-cause-li", "templates/reviews/__contributing-cause-bound-li.html").
-				SetFileSystem(templates),
-			),
-	)
+	data := map[string]any{
+		"Review":             httpReview,
+		"BoundCauses":        httpReview.BoundCauses,
+		"ContributingCauses": convertContributingCauseToHttpObjects(contributingCauses),
+		"ReviewID":           reviewID,
+		"ContributingCause":  BoundCauseBasic{},
+	}
 
-	if err := layout.WriteWithRequest(r.Context(), w, r); err != nil {
+	if err := a.pp.Render(w, "reviews/show/_contributing-causes.html", map[string]any{"Data": data}); err != nil {
 		slog.Error("failed to render bind contributing cause", "reviewID", reviewID, "error", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -506,20 +468,16 @@ func (a *reviewsHandler) EditBoundContributingCause(w http.ResponseWriter, r *ht
 
 	allCauses, _ := a.loadContributingCauses(r.Context(), h)
 
-	boundLi := partial.NewID("bound-contributing-cause-li", "templates/reviews/__contributing-cause-bound-li.html")
+	data := map[string]any{
+		"ContributingCauses": convertContributingCauseToHttpObjects(allCauses),
+		"ContributingCause":  toBoundCauseBasic(boundCause),
+		"boundCauseID":       boundCauseID,
+		"ReviewID":           reviewID,
+		"SelectedCauseID":    boundCause.Cause.ID.String(),
+	}
 
-	layout := a.layout(partial.
-		NewID("edit-contributing-cause-form", "templates/contributing-causes/binding/_form.html").
-		With(boundLi).
-		AddTemplate("templates/contributing-causes/binding/__causes-options.html").
-		AddData("ContributingCauses", convertContributingCauseToHttpObjects(allCauses)).
-		AddData("ContributingCause", toBoundCauseBasic(boundCause)).
-		AddData("boundCauseID", boundCauseID).
-		AddData("ReviewID", reviewID).
-		AddData("SelectedCauseID", boundCause.Cause.ID.String()),
-	)
-
-	if err := layout.WriteWithRequest(r.Context(), w, r); err != nil {
+	if err := a.pp.Render(w, "partials/contributing-causes/_form.html", map[string]any{"Data": data}); err != nil {
+		slog.Error("failed to render edit bound contributing cause form", "reviewID", reviewID, "boundCauseID", boundCauseID, "error", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -576,15 +534,12 @@ func (a *reviewsHandler) UpdateBoundContributingCause(w http.ResponseWriter, r *
 		return
 	}
 
-	layout := a.layout(partial.
-		NewID("bound-contributing-cause-li", "templates/reviews/__contributing-cause-bound-li.html").
-		SetData(map[string]any{
-			"ReviewID":          reviewID,
-			"ContributingCause": toBoundCauseBasic(boundCause),
-		}),
-	)
+	data := map[string]any{
+		"ReviewID":          reviewID,
+		"ContributingCause": toBoundCauseBasic(boundCause),
+	}
 
-	if err := layout.WriteWithRequest(r.Context(), w, r); err != nil {
+	if err := a.pp.Render(w, "reviews/show/_contributing-cause-bound-li.html", map[string]any{"Data": data}); err != nil {
 		slog.Error("failed to render after updating bound contributing cause", "reviewID", reviewID, "boundCauseID", boundCauseID, "error", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -672,26 +627,18 @@ func (a *reviewsHandler) BindTrigger(w http.ResponseWriter, r *http.Request) {
 	}
 	httpReview := convertToHttpObject(review)
 
-	layout := a.layout(
-		partial.
-			NewID("triggers", "templates/reviews/_triggers.html").
-			SetFileSystem(templates).
-			AddData("Review", httpReview).
-			AddData("ReviewID", reviewID).
-			AddData("BoundTrigger", BoundTriggerBasic{}).
-			AddData("BoundTriggers", httpReview.BoundTriggers),
-	)
+	data := map[string]any{
+		"Review":        httpReview,
+		"ReviewID":      reviewID,
+		"BoundTrigger":  BoundTriggerBasic{},
+		"BoundTriggers": httpReview.BoundTriggers,
+	}
 
-	if err := layout.WriteWithRequest(r.Context(), w, r); err != nil {
-		slog.Error("failed to render bind contributing cause", "reviewID", reviewID, "error", err)
+	if err := a.pp.Render(w, "reviews/show/_triggers.html", map[string]any{"Data": data}); err != nil {
+		slog.Error("failed to render bind trigger", "reviewID", reviewID, "data", data, "error", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
-}
-
-func baseContent() htmx.RenderableComponent {
-	return htmx.NewComponent("templates/reviews/base.html").FS(templates)
 }
 
 func convertToHttpObjects(rs []reviewing.Review) []ReviewBasic {
@@ -706,10 +653,11 @@ func convertToHttpObjects(rs []reviewing.Review) []ReviewBasic {
 
 func convertToHttpObject(r reviewing.Review) ReviewBasic {
 	causes := make([]BoundCauseBasic, 0, len(r.BoundCauses))
-	triggers := make([]BoundTriggerBasic, 0, len(r.BoundTriggers))
 	for _, cause := range r.BoundCauses {
 		causes = append(causes, toBoundCauseBasic(cause))
 	}
+
+	triggers := make([]BoundTriggerBasic, 0, len(r.BoundTriggers))
 	for _, trigger := range r.BoundTriggers {
 		triggers = append(triggers, toBoundTriggerBasic(trigger))
 	}
@@ -732,14 +680,6 @@ func convertToHttpObject(r reviewing.Review) ReviewBasic {
 	}
 }
 
-func toBoundTriggerBasic(trigger reviewing.BoundTrigger) BoundTriggerBasic {
-	return BoundTriggerBasic{
-		ID:   trigger.ID,
-		Name: trigger.Trigger.Name,
-		Why:  trigger.Why,
-	}
-}
-
 func toBoundCauseBasic(cause reviewing.BoundCause) BoundCauseBasic {
 	return BoundCauseBasic{
 		ID:              cause.ID,
@@ -747,6 +687,14 @@ func toBoundCauseBasic(cause reviewing.BoundCause) BoundCauseBasic {
 		Why:             cause.Why,
 		Category:        cause.Cause.Category,
 		IsProximalCause: cause.IsProximalCause,
+	}
+}
+
+func toBoundTriggerBasic(trigger reviewing.BoundTrigger) BoundTriggerBasic {
+	return BoundTriggerBasic{
+		ID:   trigger.ID,
+		Name: trigger.Trigger.Name,
+		Why:  trigger.Why,
 	}
 }
 

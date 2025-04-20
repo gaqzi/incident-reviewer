@@ -127,7 +127,7 @@ func TestReviewing(t *testing.T) {
 			for _, text := range innerTexts {
 				text = strings.TrimSpace(text)
 				if strings.HasPrefix(text, "Third party outage") {
-					// Turns out, selecting by the value (at least when it's this long) breaks in firefox, so select it by the value instead of label.
+					// Turns out, selecting by the text (at least when it's this long) breaks in firefox, so select it by the value instead of label.
 					chosenOption, err = opt.GetAttribute("value")
 					require.NoError(t, err, "failed to get value for option")
 					break
@@ -158,7 +158,7 @@ func TestReviewing(t *testing.T) {
 		// but first, let's fill in the why for the new cause first, and make sure it stays around while we add the new cause,
 		// so that we don't lose important information while saving stuff.
 		require.NoError(t, causesForm.Locator(`[name="why"]`).Fill("look, it just fits!"))
-		require.NoError(t, causesForm.Locator(`#causes button[type="submit"]`).Click())
+		require.NoError(t, causesForm.Locator(`#causes button.propose`).Click())
 
 		newCauseForm := causesForm.Locator("#causes form")
 		require.NoError(t, newCauseForm.Locator(`[name="name"]`).Fill("__Inconceivable__"))
@@ -215,9 +215,11 @@ func TestReviewing(t *testing.T) {
 
 		// After adding the trigger let's see it in the list
 		triggerListing := page.Locator(`#triggers ul.listing`)
-		count, err := triggerListing.Locator(`li`).Count()
-		require.NoError(t, err, "failed to get a count of the triggers")
-		require.Equal(t, 1, count, "expected to have one item listed after creating it")
+		require.NoError(
+			t,
+			assert.Locator(triggerListing.Locator(`li`)).ToHaveCount(1),
+			"expected to have one item listed after creating it",
+		)
 
 		firstTrigger, err := triggerListing.Locator("li").First().InnerText()
 		require.NoError(t, err, "failed to get the text of the first trigger")
