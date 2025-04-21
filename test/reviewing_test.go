@@ -188,6 +188,47 @@ func TestReviewing(t *testing.T) {
 		require.NoError(t, firstCause.Locator(`button.bind[type="submit"]`).Click())
 		require.NoError(t, assert.Locator(firstCause.Locator(".why")).ToContainText("I want to say something else now"))
 
+		// Add a trigger
+		triggerForm := page.Locator(`#triggers form.new`)
+		options, err = triggerForm.Locator(`[name="triggerID"] option`).All() // TODO: extract selecting an option into a helper
+		require.NoError(t, err)
+		require.GreaterOrEqual(t, len(options), 1)
+		for _, opt := range options {
+			innerTexts, err := opt.AllInnerTexts()
+			require.NoError(t, err)
+			for _, text := range innerTexts {
+				text = strings.TrimSpace(text)
+				if strings.HasPrefix(text, "Traffic increase") {
+					// Turns out, selecting by the value (at least when it's this long) breaks in firefox, so select it by the value instead of label.
+					chosenOption, err = opt.GetAttribute("value")
+					require.NoError(t, err, "failed to get value for option")
+					break
+				}
+			}
+		}
+		require.NotEmpty(t, chosenOption, "expected to have found a chosen option")
+		_, err = triggerForm.Locator(`[name="triggerID"]`).SelectOption(playwright.SelectOptionValues{Values: &[]string{chosenOption}})
+		require.NoError(t, err, "expected to have set the option")
+
+		require.NoError(t, triggerForm.Locator(`[name="why"]`).Fill("Marketing campaign started"))
+		require.NoError(t, triggerForm.Locator(`[type="submit"]`).Click())
+
+		// After adding the trigger let's see it in the list
+		triggerListing := page.Locator(`#triggers ul.listing`)
+		require.NoError(
+			t,
+			assert.Locator(triggerListing.Locator(`li`)).ToHaveCount(1),
+			"expected to have one item listed after creating it",
+		)
+
+		firstTrigger, err := triggerListing.Locator("li").First().InnerText()
+		require.NoError(t, err, "failed to get the text of the first trigger")
+		require.Equal(
+			t,
+			"Traffic increase -- Marketing campaign started",
+			firstTrigger,
+		)
+
 		require.NoError(t, pw.Stop(), "failed to stop playwright")
 	})
 }

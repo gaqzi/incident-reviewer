@@ -35,6 +35,7 @@ type reviewingService interface {
 	BindContributingCause(ctx context.Context, reviewID uuid.UUID, causeID uuid.UUID, boundCause reviewing.BoundCause) error
 	GetBoundContributingCause(ctx context.Context, reviewID uuid.UUID, boundCauseID uuid.UUID) (reviewing.BoundCause, error)
 	UpdateBoundContributingCause(ctx context.Context, reviewID uuid.UUID, boundCause reviewing.BoundCause) (reviewing.BoundCause, error)
+	BindTrigger(ctx context.Context, reviewID uuid.UUID, triggerID uuid.UUID, trigger reviewing.UnboundTrigger) error
 }
 
 type causeAller interface {
@@ -114,6 +115,8 @@ func ReviewsHandler(service reviewingService, causeStore causeAller) func(chi.Ro
 			r.Post("/contributing-causes", app.BindContributingCause)
 			r.Get("/contributing-causes/{boundCauseID}/edit", app.EditBoundContributingCause)
 			r.Post("/contributing-causes/{boundCauseID}/edit", app.UpdateBoundContributingCause)
+
+			r.Post("/triggers", app.BindTrigger)
 		})
 	}
 }
@@ -133,7 +136,8 @@ type ReviewBasic struct {
 	ReportTrigger       string    `form:"reportTrigger"`
 
 	// Related items that are not changed from the forms but by other calls
-	BoundCauses []BoundCauseBasic
+	BoundCauses   []BoundCauseBasic
+	BoundTriggers []BoundTriggerBasic
 
 	UpdatedAt time.Time
 	CreatedAt time.Time
@@ -156,6 +160,19 @@ type BoundCauseBasic struct {
 	Why             string
 	Category        string
 	IsProximalCause bool
+}
+
+type BoundTriggerBasic struct {
+	ID   uuid.UUID
+	Name string
+	Why  string
+}
+
+type TriggerForm struct {
+	ID        uuid.UUID `form:"id"`
+	ReviewID  uuid.UUID `form:"reviewID"`
+	TriggerID uuid.UUID `form:"triggerID"`
+	Why       string    `form:"why"`
 }
 
 type ContributingCauseBasic struct {
@@ -248,9 +265,11 @@ func (a *reviewsHandler) Show(w http.ResponseWriter, r *http.Request) {
 	data := map[string]any{
 		"Review":             httpReview,
 		"BoundCauses":        httpReview.BoundCauses,
+		"BoundTriggers":      httpReview.BoundTriggers,
 		"ContributingCauses": convertContributingCauseToHttpObjects(contributingCauses),
 		"ReviewID":           reviewID,
 		"ContributingCause":  BoundCauseBasic{},
+		"BoundTrigger":       BoundTriggerBasic{},
 	}
 
 	if err := a.pp.RenderInLayout(w, "layouts/standard.html", "reviews/show.html", map[string]any{"Data": data}); err != nil {
@@ -561,6 +580,67 @@ func (a *reviewsHandler) loadContributingCauses(ctx context.Context, h *htmx.Han
 	return contributingCauses, nil
 }
 
+func (a *reviewsHandler) BindTrigger(w http.ResponseWriter, r *http.Request) {
+	h := a.htmx.NewHandler(w, r)
+
+	if !h.IsHxRequest() {
+		h.WriteHeader(http.StatusNotFound)
+		h.JustWriteString("non-htmx requests not yet supported")
+	}
+
+	reviewID, err := uuid.Parse(r.PathValue("id"))
+	if err != nil {
+		slog.Error("failed to parse id for create trigger", "id", r.PathValue("id"), "error", err)
+		h.WriteHeader(http.StatusBadRequest)
+		h.JustWriteString("invalid id")
+		return
+	}
+
+	if err := r.ParseForm(); err != nil {
+		slog.Error("failed to parse form", "error", err)
+		h.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	var triggerForm TriggerForm
+	if err := a.decoder.Decode(&triggerForm, r.PostForm); err != nil {
+		slog.Error("failed to decode basic trigger form", "error", err)
+		h.WriteHeader(http.StatusBadRequest)
+		h.JustWriteString(err.Error())
+		return
+	}
+
+	if err := a.service.BindTrigger(
+		r.Context(),
+		reviewID,
+		triggerForm.TriggerID,
+		reviewing.UnboundTrigger{Why: triggerForm.Why},
+	); err != nil {
+		slog.Error("failed to bind trigger", "reviewID", reviewID, "error", err)
+		h.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	review, err := a.loadReview(r.Context(), h, reviewID)
+	if err != nil {
+		return
+	}
+	httpReview := convertToHttpObject(review)
+
+	data := map[string]any{
+		"Review":        httpReview,
+		"ReviewID":      reviewID,
+		"BoundTrigger":  BoundTriggerBasic{},
+		"BoundTriggers": httpReview.BoundTriggers,
+	}
+
+	if err := a.pp.Render(w, "reviews/show/_triggers.html", map[string]any{"Data": data}); err != nil {
+		slog.Error("failed to render bind trigger", "reviewID", reviewID, "data", data, "error", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
 func convertToHttpObjects(rs []reviewing.Review) []ReviewBasic {
 	ret := make([]ReviewBasic, 0, len(rs))
 
@@ -577,6 +657,11 @@ func convertToHttpObject(r reviewing.Review) ReviewBasic {
 		causes = append(causes, toBoundCauseBasic(cause))
 	}
 
+	triggers := make([]BoundTriggerBasic, 0, len(r.BoundTriggers))
+	for _, trigger := range r.BoundTriggers {
+		triggers = append(triggers, toBoundTriggerBasic(trigger))
+	}
+
 	return ReviewBasic{
 		ID:                  r.ID,
 		URL:                 r.URL,
@@ -587,7 +672,8 @@ func convertToHttpObject(r reviewing.Review) ReviewBasic {
 		ReportProximalCause: r.ReportProximalCause,
 		ReportTrigger:       r.ReportTrigger,
 
-		BoundCauses: causes,
+		BoundCauses:   causes,
+		BoundTriggers: triggers,
 
 		CreatedAt: r.CreatedAt,
 		UpdatedAt: r.UpdatedAt,
@@ -601,6 +687,14 @@ func toBoundCauseBasic(cause reviewing.BoundCause) BoundCauseBasic {
 		Why:             cause.Why,
 		Category:        cause.Cause.Category,
 		IsProximalCause: cause.IsProximalCause,
+	}
+}
+
+func toBoundTriggerBasic(trigger reviewing.BoundTrigger) BoundTriggerBasic {
+	return BoundTriggerBasic{
+		ID:   trigger.ID,
+		Name: trigger.Trigger.Name,
+		Why:  trigger.Why,
 	}
 }
 

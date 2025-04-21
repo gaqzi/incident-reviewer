@@ -17,3 +17,11 @@ func (e *NoCauseError) Error() string {
 
 // ErrNoID indicates that the passed in uuid ID is blank/uninitialized.
 var ErrNoID = errors.New("can't store contributing cause because ID is not set")
+
+type NoTriggerError struct {
+	ID uuid.UUID
+}
+
+func (e *NoTriggerError) Error() string {
+	return fmt.Sprintf("trigger not found by id: %d", e.ID)
+}
