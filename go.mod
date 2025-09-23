@@ -13,7 +13,7 @@ require (
 	github.com/go-sqlx/sqlx v1.3.8
 	github.com/google/uuid v1.6.0
 	github.com/lib/pq v1.10.9
-	github.com/playwright-community/playwright-go v0.5200.0
+	github.com/playwright-community/playwright-go v0.5200.1
 	github.com/pressly/goose/v3 v3.25.0
 	github.com/quasilyte/go-ruleguard/dsl v0.3.22
 	github.com/sevlyar/go-daemon v0.1.6
