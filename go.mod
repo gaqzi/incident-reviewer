@@ -14,7 +14,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/lib/pq v1.10.9
 	github.com/playwright-community/playwright-go v0.5200.1
-	github.com/pressly/goose/v3 v3.25.0
+	github.com/pressly/goose/v3 v3.26.0
 	github.com/quasilyte/go-ruleguard/dsl v0.3.23
 	github.com/sevlyar/go-daemon v0.1.6
 	github.com/stretchr/testify v1.11.1
