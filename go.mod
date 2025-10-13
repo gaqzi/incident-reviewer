@@ -8,7 +8,7 @@ require (
 	github.com/gaqzi/passepartout v0.0.0-20250322145303-2e614da245dd
 	github.com/go-chi/chi/v5 v5.2.3
 	github.com/go-chi/httplog/v2 v2.1.1
-	github.com/go-playground/form/v4 v4.2.2
+	github.com/go-playground/form/v4 v4.3.0
 	github.com/go-playground/validator/v10 v10.28.0
 	github.com/go-sqlx/sqlx v1.3.8
 	github.com/google/uuid v1.6.0
