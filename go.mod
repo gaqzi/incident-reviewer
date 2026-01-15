@@ -6,7 +6,7 @@ require (
 	github.com/donseba/go-htmx v1.12.0
 	github.com/donseba/go-partial v0.8.0
 	github.com/gaqzi/passepartout v0.0.0-20250322145303-2e614da245dd
-	github.com/go-chi/chi/v5 v5.2.3
+	github.com/go-chi/chi/v5 v5.2.4
 	github.com/go-chi/httplog/v2 v2.1.1
 	github.com/go-playground/form/v4 v4.3.0
 	github.com/go-playground/validator/v10 v10.30.1
