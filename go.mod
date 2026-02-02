@@ -3,7 +3,7 @@ module github.com/gaqzi/incident-reviewer
 go 1.24.1
 
 require (
-	github.com/donseba/go-htmx v1.12.0
+	github.com/donseba/go-htmx v1.12.1
 	github.com/donseba/go-partial v0.8.0
 	github.com/gaqzi/passepartout v0.0.0-20250322145303-2e614da245dd
 	github.com/go-chi/chi/v5 v5.2.4
